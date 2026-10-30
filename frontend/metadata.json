@@ -1,0 +1,6 @@
+{
+  "name": "Ecommerce Recommendation Model",
+  "description": "Amazon-style e-commerce storefront with multi-rail recommendations, catalog browsing, and complete modular ML system architecture blueprint.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
