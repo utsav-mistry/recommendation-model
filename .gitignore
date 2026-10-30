@@ -73,5 +73,43 @@ outputs/
 # OS and editor files
 .DS_Store
 Thumbs.db
-.vscode/settings.json
+.vscode/
 .idea/
+*.swp
+*.swo
+
+# Java & Spring Boot / Maven / Gradle
+target/
+**/target/
+build/
+**/build/
+.gradle/
+**/.gradle/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+.mvn/wrapper/maven-wrapper.jar
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+*.iml
+*.ipr
+*.iws
+
+# Node / Frontend (if added)
+node_modules/
+**/node_modules/
+.next/
+dist/
+**/dist/
+.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

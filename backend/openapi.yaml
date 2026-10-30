@@ -1,0 +1,354 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce REST API
+  description: Backend API Contract for E-Commerce platform with in-memory persistence.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api
+    description: Local Spring Boot Server
+paths:
+  /products:
+    get:
+      summary: Get all products with filters & sorting
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [price_asc, price_desc, rating, newest, name]
+      responses:
+        '200':
+          description: List of products
+    post:
+      summary: Create a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+      responses:
+        '201':
+          description: Created product
+  /products/{id}:
+    get:
+      summary: Get product by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Product details
+        '404':
+          description: Product not found
+    put:
+      summary: Update product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+      responses:
+        '200':
+          description: Updated product
+    delete:
+      summary: Delete product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Product soft-deleted
+  /categories:
+    get:
+      summary: List all product categories
+      responses:
+        '200':
+          description: List of categories
+  /cart/{userId}:
+    get:
+      summary: Get user cart
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User cart
+    delete:
+      summary: Clear entire cart
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cart cleared
+  /cart/{userId}/items:
+    post:
+      summary: Add item to cart
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddToCartRequest'
+      responses:
+        '200':
+          description: Updated cart
+  /cart/{userId}/items/{productId}:
+    put:
+      summary: Update item quantity in cart
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCartItemRequest'
+      responses:
+        '200':
+          description: Updated cart
+    delete:
+      summary: Remove item from cart
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Updated cart
+  /orders/checkout:
+    post:
+      summary: Checkout cart and place order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '201':
+          description: Order created
+        '400':
+          description: Empty cart or stock unavailable
+  /orders/{id}:
+    get:
+      summary: Get order by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Order details
+  /orders/user/{userId}:
+    get:
+      summary: Get orders by user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User orders
+  /orders/{id}/cancel:
+    post:
+      summary: Cancel order and restore stock
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Order cancelled
+  /coupons:
+    get:
+      summary: List all active coupons
+      responses:
+        '200':
+          description: List of coupons
+  /coupons/validate/{code}:
+    get:
+      summary: Validate coupon discount
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: orderAmount
+          in: query
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Coupon validation result
+  /products/{productId}/reviews:
+    get:
+      summary: Get product reviews
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Product reviews
+    post:
+      summary: Add review for product
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequest'
+      responses:
+        '201':
+          description: Created review
+  /users/register:
+    post:
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegisterRequest'
+      responses:
+        '201':
+          description: User registered
+components:
+  schemas:
+    Address:
+      type: object
+      properties:
+        street: { type: string }
+        city: { type: string }
+        state: { type: string }
+        postalCode: { type: string }
+        country: { type: string }
+    ProductRequest:
+      type: object
+      required: [name, price, category, stockQuantity]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        price: { type: number }
+        category: { type: string }
+        stockQuantity: { type: integer }
+        imageUrl: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+    AddToCartRequest:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId: { type: integer }
+        quantity: { type: integer, minimum: 1 }
+    UpdateCartItemRequest:
+      type: object
+      required: [quantity]
+      properties:
+        quantity: { type: integer, minimum: 1 }
+    CheckoutRequest:
+      type: object
+      required: [userId, customerName, customerEmail, shippingAddress]
+      properties:
+        userId: { type: string }
+        customerName: { type: string }
+        customerEmail: { type: string, format: email }
+        customerPhone: { type: string }
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        paymentMethod: { type: string, default: "CREDIT_CARD" }
+        couponCode: { type: string }
+    ReviewRequest:
+      type: object
+      required: [userId, userName, rating]
+      properties:
+        userId: { type: string }
+        userName: { type: string }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string }
+    UserRegisterRequest:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        role: { type: string, enum: [CUSTOMER, ADMIN], default: CUSTOMER }
+        address:
+          $ref: '#/components/schemas/Address'
