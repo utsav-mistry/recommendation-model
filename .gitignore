@@ -75,3 +75,5 @@ outputs/
 Thumbs.db
 .vscode/settings.json
 .idea/
+
+*.crdownload
