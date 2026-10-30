@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Product, CartItem, UserProfile, RecEngineMode } from './types/ecommerce';
 import { AMAZON_PRODUCTS } from './data/amazon2023Data';
 import { USER_PROFILES } from './data/userProfiles';
+import { apiService, mapBackendProductToFrontend } from './services/apiService';
 import { Header } from './components/Header';
 import { SubNavbar } from './components/SubNavbar';
 import { HeroCarousel } from './components/HeroCarousel';
@@ -65,6 +66,34 @@ export default function App() {
   // Sorting and filtering
   const [sortBy, setSortBy] = useState<'featured' | 'price-low' | 'price-high' | 'rating'>('featured');
   const [primeOnly, setPrimeOnly] = useState(false);
+
+  // Dynamic products loaded from backend with fallback
+  const [allProducts, setAllProducts] = useState<Product[]>(AMAZON_PRODUCTS);
+  const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    async function loadBackendData() {
+      try {
+        const isHealthy = await apiService.checkHealth();
+        setIsBackendConnected(isHealthy);
+        if (isHealthy) {
+          const backendItems = await apiService.getProducts();
+          if (backendItems && backendItems.length > 0) {
+            const mapped = backendItems.map(mapBackendProductToFrontend);
+            setAllProducts((prev) => {
+              const titles = new Set(prev.map((p) => p.title.toLowerCase()));
+              const newItems = mapped.filter((m) => !titles.has(m.title.toLowerCase()));
+              return [...mapped, ...newItems];
+            });
+            triggerToast('Connected to Spring Boot REST backend (:8080)');
+          }
+        }
+      } catch {
+        setIsBackendConnected(false);
+      }
+    }
+    loadBackendData();
+  }, []);
 
   // Helper to show toasts
   const triggerToast = (msg: string) => {
@@ -155,8 +184,18 @@ export default function App() {
   };
 
   const compareProducts = useMemo(() => {
-    return AMAZON_PRODUCTS.filter((p) => compareProductIds.includes(p.id));
-  }, [compareProductIds]);
+    const seen = new Set<string>();
+    const result: Product[] = [];
+    for (const id of compareProductIds) {
+      const found = allProducts.find((p) => p.id === id);
+      if (found && !seen.has(found.id)) {
+        seen.add(found.id);
+        result.push(found);
+        if (result.length === 3) break;
+      }
+    }
+    return result;
+  }, [allProducts, compareProductIds]);
 
   const wishlistProductIds = useMemo(() => {
     return wishlistItems.map((item) => item.id);
@@ -164,7 +203,7 @@ export default function App() {
 
   // Dynamic ranking based on active user and selected recommendation mode
   const rankedProducts = useMemo(() => {
-    return [...AMAZON_PRODUCTS].map((product) => {
+    return [...allProducts].map((product) => {
       let score = product.twoTowerEmbeddingSimilarity || 0.85;
 
       // Persona affinity bonus
@@ -274,9 +313,31 @@ export default function App() {
         onCategoryChange={setSelectedCategory}
         onOpenArchitecture={() => setIsArchitectureOpen(true)}
         onOpenDashboardDesign={() => setIsDashboardDesignOpen(true)}
-        products={AMAZON_PRODUCTS}
+        products={allProducts}
         onSelectProduct={setSelectedProduct}
       />
+
+      {/* Backend API Contract Status Banner */}
+      {isBackendConnected !== null && (
+        <div className={`px-4 py-1.5 text-xs flex items-center justify-between border-b transition-colors ${
+          isBackendConnected
+            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+            : 'bg-amber-50 text-amber-800 border-amber-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+            <span className="font-semibold">
+              {isBackendConnected ? 'Spring Boot REST API: Connected (:8080)' : 'Backend API: Offline Fallback Active'}
+            </span>
+            <span className="text-gray-500 text-[11px] hidden sm:inline">
+              ({isBackendConnected ? 'Loaded catalog items from in-memory Spring Boot store' : 'Using in-browser offline simulation'})
+            </span>
+          </div>
+          <span className="text-[11px] font-mono text-gray-600">
+            Contract: API_CONTRACT.md
+          </span>
+        </div>
+      )}
 
       {/* SubNavbar with Category Pills & Rec Engine Selector */}
       <SubNavbar
@@ -557,6 +618,10 @@ export default function App() {
         onRemoveItem={handleRemoveFromCart}
         onSelectProduct={setSelectedProduct}
         onAddToCart={handleAddToCart}
+        activeUserId={activeUser.id}
+        activeUserName={activeUser.name}
+        activeUserEmail="alice@example.com"
+        onClearCart={() => setCartItems([])}
       />
 
       {/* Architecture Specs Modal */}

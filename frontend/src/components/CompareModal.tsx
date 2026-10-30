@@ -33,6 +33,8 @@ export const CompareModal: React.FC<CompareModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const emptySlotsCount = Math.max(0, 3 - compareProducts.length);
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-xs flex justify-center p-2 sm:p-4">
       <div className="bg-white w-full max-w-6xl my-auto rounded-xl shadow-2xl overflow-hidden relative border border-gray-300 flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
@@ -138,7 +140,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                       </th>
                     ))}
                     {/* Placeholder columns if < 3 */}
-                    {[...Array(3 - compareProducts.length)].map((_, i) => (
+                    {[...Array(emptySlotsCount)].map((_, i) => (
                       <th key={`empty-${i}`} className="py-4 px-4 text-center align-middle min-w-[240px] bg-gray-50/40 border border-dashed border-gray-200 rounded">
                         <div className="py-12 text-gray-400 text-xs">
                           <span>+ Select another item to compare</span>
@@ -164,7 +166,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                         </div>
                       </td>
                     ))}
-                    {[...Array(3 - compareProducts.length)].map((_, i) => (
+                    {[...Array(emptySlotsCount)].map((_, i) => (
                       <td key={`empty-price-${i}`} className="py-3 px-4 text-gray-300">-</td>
                     ))}
                   </tr>
@@ -190,7 +192,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                         </div>
                       </td>
                     ))}
-                    {[...Array(3 - compareProducts.length)].map((_, i) => (
+                    {[...Array(emptySlotsCount)].map((_, i) => (
                       <td key={`empty-rating-${i}`} className="py-3 px-4 text-gray-300">-</td>
                     ))}
                   </tr>
@@ -209,7 +211,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                         )}
                       </td>
                     ))}
-                    {[...Array(3 - compareProducts.length)].map((_, i) => (
+                    {[...Array(emptySlotsCount)].map((_, i) => (
                       <td key={`empty-prime-${i}`} className="py-3 px-4 text-gray-300">-</td>
                     ))}
                   </tr>
@@ -223,7 +225,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                         <p className="font-mono text-[11px] text-gray-500">ASIN: {p.asin}</p>
                       </td>
                     ))}
-                    {[...Array(3 - compareProducts.length)].map((_, i) => (
+                    {[...Array(emptySlotsCount)].map((_, i) => (
                       <td key={`empty-brand-${i}`} className="py-3 px-4 text-gray-300">-</td>
                     ))}
                   </tr>
@@ -236,7 +238,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                         {p.category}
                       </td>
                     ))}
-                    {[...Array(3 - compareProducts.length)].map((_, i) => (
+                    {[...Array(emptySlotsCount)].map((_, i) => (
                       <td key={`empty-cat-${i}`} className="py-3 px-4 text-gray-300">-</td>
                     ))}
                   </tr>
@@ -251,7 +253,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                         </span>
                       </td>
                     ))}
-                    {[...Array(3 - compareProducts.length)].map((_, i) => (
+                    {[...Array(emptySlotsCount)].map((_, i) => (
                       <td key={`empty-kcore-${i}`} className="py-3 px-4 text-gray-300">-</td>
                     ))}
                   </tr>
@@ -269,7 +271,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                         </div>
                       </td>
                     ))}
-                    {[...Array(3 - compareProducts.length)].map((_, i) => (
+                    {[...Array(emptySlotsCount)].map((_, i) => (
                       <td key={`empty-twotower-${i}`} className="py-3 px-4 text-gray-300">-</td>
                     ))}
                   </tr>
@@ -291,7 +293,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                         </td>
                       );
                     })}
-                    {[...Array(3 - compareProducts.length)].map((_, i) => (
+                    {[...Array(emptySlotsCount)].map((_, i) => (
                       <td key={`empty-sent-${i}`} className="py-3 px-4 text-gray-300">-</td>
                     ))}
                   </tr>
@@ -308,7 +310,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                         </ul>
                       </td>
                     ))}
-                    {[...Array(3 - compareProducts.length)].map((_, i) => (
+                    {[...Array(emptySlotsCount)].map((_, i) => (
                       <td key={`empty-feat-${i}`} className="py-3 px-4 text-gray-300">-</td>
                     ))}
                   </tr>

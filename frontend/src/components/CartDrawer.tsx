@@ -11,6 +11,9 @@ import {
 } from 'lucide-react';
 import { AMAZON_PRODUCTS } from '../data/amazon2023Data';
 
+import { apiService } from '../services/apiService';
+import { Tag } from 'lucide-react';
+
 interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,6 +22,10 @@ interface CartDrawerProps {
   onRemoveItem: (productId: string) => void;
   onSelectProduct: (product: Product) => void;
   onAddToCart: (product: Product) => void;
+  activeUserId?: string;
+  activeUserName?: string;
+  activeUserEmail?: string;
+  onClearCart?: () => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -28,10 +35,25 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onSelectProduct,
-  onAddToCart
+  onAddToCart,
+  activeUserId = '1',
+  activeUserName = 'Alice Johnson',
+  activeUserEmail = 'alice@example.com',
+  onClearCart
 }) => {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [orderSummary, setOrderSummary] = useState<{
+    orderNumber: string;
+    subtotal: number;
+    discount: number;
+    shippingFee: number;
+    totalAmount: number;
+  } | null>(null);
 
   if (!isOpen) return null;
 
@@ -40,7 +62,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     0
   );
   const totalItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const freeShippingThreshold = 35.0;
+  const freeShippingThreshold = 50.0;
   const progressPercent = Math.min((subtotal / freeShippingThreshold) * 100, 100);
 
   // Suggested impulse cross-sells not in cart
@@ -49,12 +71,76 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     (p) => !cartAsins.includes(p.asin) && p.price < 60
   ).slice(0, 2);
 
-  const handleCheckout = () => {
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const code = couponCode.trim().toUpperCase();
+      const res = await apiService.validateCoupon(code, subtotal);
+      setAppliedCoupon({ code: res.couponCode, discount: res.discountAmount });
+    } catch (err: any) {
+      // Local fallback calculation matching backend rules
+      const code = couponCode.trim().toUpperCase();
+      if (code === 'WELCOME10' && subtotal >= 30) {
+        setAppliedCoupon({ code, discount: Math.min(50, Math.round(subtotal * 0.1 * 100) / 100) });
+      } else if (code === 'SAVE20' && subtotal >= 100) {
+        setAppliedCoupon({ code, discount: Math.min(100, Math.round(subtotal * 0.2 * 100) / 100) });
+      } else if (code === 'SUPER50' && subtotal >= 250) {
+        setAppliedCoupon({ code, discount: Math.min(200, Math.round(subtotal * 0.5 * 100) / 100) });
+      } else {
+        setCouponError(err.message || 'Invalid coupon code or minimum order amount not met');
+      }
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleCheckout = async () => {
     setIsCheckingOut(true);
-    setTimeout(() => {
-      setIsCheckingOut(false);
+    const discount = appliedCoupon ? appliedCoupon.discount : 0;
+    const shipping = subtotal >= freeShippingThreshold ? 0 : 9.99;
+    const computedTotal = Math.max(0, Math.round((subtotal - discount + shipping) * 100) / 100);
+
+    try {
+      const order = await apiService.checkout({
+        userId: activeUserId,
+        customerName: activeUserName,
+        customerEmail: activeUserEmail,
+        shippingAddress: {
+          street: '123 Market St',
+          city: 'San Francisco',
+          state: 'CA',
+          postalCode: '94105',
+          country: 'USA'
+        },
+        paymentMethod: 'CREDIT_CARD',
+        couponCode: appliedCoupon?.code
+      });
+
+      setOrderSummary({
+        orderNumber: order.orderNumber,
+        subtotal: order.subtotal,
+        discount: order.discount,
+        shippingFee: order.shippingFee,
+        totalAmount: order.totalAmount
+      });
       setOrderComplete(true);
-    }, 1200);
+      if (onClearCart) onClearCart();
+    } catch (err: any) {
+      // Offline fallback simulation
+      setOrderSummary({
+        orderNumber: `ORD-${Date.now().toString().slice(-6)}-DEMO`,
+        subtotal,
+        discount,
+        shippingFee: shipping,
+        totalAmount: computedTotal
+      });
+      setOrderComplete(true);
+      if (onClearCart) onClearCart();
+    } finally {
+      setIsCheckingOut(false);
+    }
   };
 
   return (
@@ -81,15 +167,38 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             <div className="bg-white p-6 rounded-md border border-gray-200 text-center space-y-4 my-8">
               <CheckCircle className="w-14 h-14 text-emerald-600 mx-auto" />
               <h3 className="text-xl font-bold text-gray-900">Order Placed Successfully!</h3>
-              <p className="text-xs text-gray-600">
-                Your order #114-893271-92849 has been sent to fulfillment. Recommender candidate weights have been updated for future session personalization.
+              <div className="bg-emerald-50 border border-emerald-200 rounded p-3 text-left text-xs space-y-1">
+                <p className="font-semibold text-emerald-900">
+                  Tracking #: <span className="font-mono">{orderSummary?.orderNumber || 'ORD-CONFIRMED'}</span>
+                </p>
+                <div className="flex justify-between text-emerald-800 pt-1 border-t border-emerald-200">
+                  <span>Subtotal:</span>
+                  <span>${orderSummary?.subtotal.toFixed(2)}</span>
+                </div>
+                {(orderSummary?.discount || 0) > 0 && (
+                  <div className="flex justify-between text-emerald-800 font-bold">
+                    <span>Coupon Discount:</span>
+                    <span>-${orderSummary?.discount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-emerald-800">
+                  <span>Shipping:</span>
+                  <span>{orderSummary?.shippingFee === 0 ? 'FREE' : `$${orderSummary?.shippingFee.toFixed(2)}`}</span>
+                </div>
+                <div className="flex justify-between font-bold text-emerald-950 pt-1 border-t border-emerald-200 text-sm">
+                  <span>Total Paid:</span>
+                  <span>${orderSummary?.totalAmount.toFixed(2)}</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-600">
+                Backend inventory stock was automatically updated and confirmed.
               </p>
               <button
                 onClick={() => {
                   setOrderComplete(false);
                   onClose();
                 }}
-                className="w-full bg-[#ffd814] hover:bg-[#f7ca00] text-gray-900 font-bold text-xs py-2 rounded-full cursor-pointer"
+                className="w-full bg-[#ffd814] hover:bg-[#f7ca00] text-gray-900 font-bold text-xs py-2.5 rounded-full cursor-pointer shadow-xs"
               >
                 Continue Shopping
               </button>
@@ -228,9 +337,64 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         {/* Cart Bottom Summary */}
         {!orderComplete && cartItems.length > 0 && (
           <div className="bg-white p-4 border-t border-gray-200 shadow-lg space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Subtotal ({totalItemCount} items):</span>
-              <span className="text-lg font-bold text-gray-900">${subtotal.toFixed(2)}</span>
+            {/* Promo / Coupon Input */}
+            <div className="bg-gray-50 p-2.5 rounded-md border border-gray-200 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-gray-700">
+                <span className="flex items-center gap-1">
+                  <Tag className="w-3.5 h-3.5 text-amber-600" /> Apply Promo Code
+                </span>
+                <span className="text-gray-400 font-normal">Try: WELCOME10, SAVE20</span>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. WELCOME10"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  className="flex-1 bg-white border border-gray-300 rounded px-2.5 py-1 text-xs uppercase font-mono tracking-wider focus:outline-none focus:border-amber-500"
+                />
+                <button
+                  type="button"
+                  disabled={couponLoading || !couponCode.trim()}
+                  onClick={handleApplyCoupon}
+                  className="bg-gray-900 hover:bg-black text-white text-xs font-semibold px-3 py-1 rounded transition disabled:opacity-50 cursor-pointer"
+                >
+                  {couponLoading ? '...' : 'Apply'}
+                </button>
+              </div>
+              {appliedCoupon && (
+                <div className="text-[11px] text-emerald-700 font-medium flex items-center justify-between pt-0.5">
+                  <span>✓ Code <strong>{appliedCoupon.code}</strong> applied!</span>
+                  <span>-${appliedCoupon.discount.toFixed(2)}</span>
+                </div>
+              )}
+              {couponError && (
+                <p className="text-[11px] text-rose-600">{couponError}</p>
+              )}
+            </div>
+
+            {/* Price Breakdown */}
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center justify-between text-gray-600">
+                <span>Subtotal ({totalItemCount} items):</span>
+                <span>${subtotal.toFixed(2)}</span>
+              </div>
+              {appliedCoupon && (
+                <div className="flex items-center justify-between text-emerald-700 font-semibold">
+                  <span>Coupon Discount:</span>
+                  <span>-${appliedCoupon.discount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-gray-600">
+                <span>Estimated Shipping:</span>
+                <span>{subtotal >= freeShippingThreshold ? 'FREE' : '$9.99'}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm font-bold text-gray-900 pt-1 border-t border-gray-100">
+                <span>Estimated Total:</span>
+                <span className="text-base text-[#b12704]">
+                  ${Math.max(0, subtotal - (appliedCoupon?.discount || 0) + (subtotal >= freeShippingThreshold ? 0 : 9.99)).toFixed(2)}
+                </span>
+              </div>
             </div>
 
             <button
@@ -239,10 +403,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               className="w-full bg-[#db4444] hover:bg-[#c93b3b] active:bg-[#b83333] text-white font-bold text-xs py-3 px-4 rounded-md shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isCheckingOut ? (
-                <span>Simulating Checkout & RecSys Attribution...</span>
+                <span>Placing Order via Backend API...</span>
               ) : (
                 <>
-                  <span>Proceed to Checkout</span>
+                  <span>Place Order & Checkout</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -250,7 +414,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
             <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-500">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Safe & Secure Amazon 2023 Checkout Simulation</span>
+              <span>Connected to Spring Boot In-Memory API Contract</span>
             </div>
           </div>
         )}

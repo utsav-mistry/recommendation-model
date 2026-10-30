@@ -46,7 +46,7 @@ export const CompareFloatingBar: React.FC<CompareFloatingBarProps> = ({
         ))}
 
         {/* Empty slots indicator */}
-        {[...Array(3 - compareProducts.length)].map((_, idx) => (
+        {[...Array(Math.max(0, 3 - compareProducts.length))].map((_, idx) => (
           <div
             key={idx}
             className="w-11 h-11 rounded-lg border border-dashed border-slate-600 flex items-center justify-center text-slate-500 text-xs shrink-0"
