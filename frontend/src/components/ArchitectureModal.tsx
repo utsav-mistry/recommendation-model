@@ -53,7 +53,7 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-white">
-                  Ecommerce Recommendation Model: System Architecture
+                  Ecommerce Recommendation System: Architecture Specs
                 </h2>
                 <span className="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-2 py-0.5 rounded-full font-mono">
                   Modular RecSys v2.4
@@ -459,7 +459,7 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({
 
         {/* Modal Footer */}
         <div className="bg-slate-900 px-6 py-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-          <span>Project: <strong>Ecommerce Recommendation model</strong> (ReviewStream Ingestion)</span>
+          <span>Project: <strong>Ecommerce Recommendation System</strong> (ReviewStream Ingestion)</span>
           <button
             onClick={handleCopyPrompt}
             className="flex items-center gap-1.5 text-amber-400 hover:text-amber-300 font-bold cursor-pointer"

@@ -50,20 +50,20 @@ export const SubNavbar: React.FC<SubNavbarProps> = ({
           })}
         </div>
 
-        {/* Serving Mode Selector */}
+        {/* Recommendation Feed Selector */}
         <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
           <div className="flex items-center gap-1.5 bg-[#f5f5f5] px-3 py-1.5 rounded-full border border-gray-200 text-xs">
             <Zap className="w-3.5 h-3.5 text-[#db4444]" />
-            <span className="text-gray-500 font-medium">Rec Engine:</span>
+            <span className="text-gray-500 font-medium">Feed:</span>
             <select
               value={recMode}
               onChange={(e) => onSelectRecMode(e.target.value as RecEngineMode)}
               className="bg-transparent text-gray-900 font-semibold outline-none cursor-pointer pr-1"
             >
-              <option value="two-tower">Two-Tower DSSM (ANN)</option>
-              <option value="collaborative-filtering">20-Core Collab Filter</option>
-              <option value="hybrid-graph">Hybrid Semantic + Graph</option>
-              <option value="popular-baseline">Popularity Baseline</option>
+              <option value="two-tower">Personalized For You</option>
+              <option value="collaborative-filtering">Community Favorites</option>
+              <option value="hybrid-graph">Trending & Discovery</option>
+              <option value="popular-baseline">Most Popular</option>
             </select>
           </div>
         </div>

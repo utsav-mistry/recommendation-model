@@ -5,31 +5,15 @@ import { USER_PROFILES } from './data/userProfiles';
 import { apiService, mapBackendProductToFrontend } from './services/apiService';
 import { Header } from './components/Header';
 import { SubNavbar } from './components/SubNavbar';
-import { HeroCarousel } from './components/HeroCarousel';
 import { CategoryCardsGrid } from './components/CategoryCardsGrid';
 import { RecommendationRail } from './components/RecommendationRail';
 import { ProductCard } from './components/ProductCard';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { CartDrawer } from './components/CartDrawer';
-import { WishlistDrawer } from './components/WishlistDrawer';
-import { CompareModal } from './components/CompareModal';
-import { CompareFloatingBar } from './components/CompareFloatingBar';
 import { ArchitectureModal } from './components/ArchitectureModal';
 import { DashboardDesignModal } from './components/DashboardDesignModal';
-import { ValuePropsSection } from './components/ValuePropsSection';
 import { Footer } from './components/Footer';
-import { 
-  Check, 
-  Sparkles, 
-  Filter, 
-  SlidersHorizontal, 
-  ArrowUpDown, 
-  X, 
-  ShoppingCart,
-  Cpu,
-  BarChart2,
-  Heart
-} from 'lucide-react';
+import { Check } from 'lucide-react';
 
 export default function App() {
   const [activeUser, setActiveUser] = useState<UserProfile>(USER_PROFILES[0]);
@@ -39,20 +23,6 @@ export default function App() {
       quantity: 1
     }
   ]);
-
-  // Wishlist state: array of Product items
-  const [wishlistItems, setWishlistItems] = useState<Product[]>([
-    AMAZON_PRODUCTS[2], // Apple AirPods Pro 2nd Gen
-    AMAZON_PRODUCTS[4]  // Keychron Q1 Pro
-  ]);
-  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
-
-  // Compare state: array of selected product IDs (up to 3 products)
-  const [compareProductIds, setCompareProductIds] = useState<string[]>([
-    AMAZON_PRODUCTS[0].id, // Sony WH-1000XM5
-    AMAZON_PRODUCTS[5].id  // Bose QC45
-  ]);
-  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Departments');
@@ -85,7 +55,7 @@ export default function App() {
               const newItems = mapped.filter((m) => !titles.has(m.title.toLowerCase()));
               return [...mapped, ...newItems];
             });
-            triggerToast('Connected to Spring Boot REST backend (:8080)');
+            triggerToast('Connected to recommendation backend (:8000)');
           }
         }
       } catch {
@@ -132,75 +102,6 @@ export default function App() {
     setCartItems((prev) => prev.filter((item) => item.product.id !== productId));
   };
 
-  // Wishlist operations
-  const handleToggleWishlist = (product: Product, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setWishlistItems((prev) => {
-      const isSaved = prev.some((item) => item.id === product.id);
-      if (isSaved) {
-        triggerToast(`Removed from your Wish List: ${product.title.slice(0, 28)}...`);
-        return prev.filter((item) => item.id !== product.id);
-      } else {
-        triggerToast(`Saved to your Wish List: ${product.title.slice(0, 28)}...`);
-        return [...prev, product];
-      }
-    });
-  };
-
-  const handleRemoveFromWishlist = (productId: string) => {
-    setWishlistItems((prev) => prev.filter((item) => item.id !== productId));
-  };
-
-  const handleClearWishlist = () => {
-    setWishlistItems([]);
-    triggerToast('Wish List cleared');
-  };
-
-  // Compare operations (max 3 products)
-  const handleToggleCompare = (product: Product, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setCompareProductIds((prev) => {
-      if (prev.includes(product.id)) {
-        triggerToast(`Removed ${product.brand} from comparison`);
-        return prev.filter((id) => id !== product.id);
-      } else {
-        if (prev.length >= 3) {
-          triggerToast('Maximum 3 products can be compared at once. Please remove an item first.');
-          return prev;
-        }
-        triggerToast(`Added ${product.brand} to compare (${prev.length + 1}/3)`);
-        return [...prev, product.id];
-      }
-    });
-  };
-
-  const handleRemoveFromCompare = (productId: string) => {
-    setCompareProductIds((prev) => prev.filter((id) => id !== productId));
-  };
-
-  const handleClearCompare = () => {
-    setCompareProductIds([]);
-    triggerToast('Cleared comparison list');
-  };
-
-  const compareProducts = useMemo(() => {
-    const seen = new Set<string>();
-    const result: Product[] = [];
-    for (const id of compareProductIds) {
-      const found = allProducts.find((p) => p.id === id);
-      if (found && !seen.has(found.id)) {
-        seen.add(found.id);
-        result.push(found);
-        if (result.length === 3) break;
-      }
-    }
-    return result;
-  }, [allProducts, compareProductIds]);
-
-  const wishlistProductIds = useMemo(() => {
-    return wishlistItems.map((item) => item.id);
-  }, [wishlistItems]);
-
   // Dynamic ranking based on active user and selected recommendation mode
   const rankedProducts = useMemo(() => {
     return [...allProducts].map((product) => {
@@ -227,7 +128,7 @@ export default function App() {
         dynamicScore: Math.min(score, 0.99)
       };
     }).sort((a, b) => b.dynamicScore - a.dynamicScore);
-  }, [activeUser, recEngineMode]);
+  }, [allProducts, activeUser, recEngineMode]);
 
   // Filtered catalog for main product grid
   const filteredProducts = useMemo(() => {
@@ -240,7 +141,6 @@ export default function App() {
         return terms.every((t) => searchableText.includes(t));
       });
 
-      // If user had a department selected, only constrain if that department has matches
       if (selectedCategory !== 'All Departments') {
         const inCategory = result.filter((p) => p.category === selectedCategory);
         if (inCategory.length > 0) {
@@ -297,16 +197,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Modern Figma Header */}
+      {/* Header */}
       <Header
         activeUser={activeUser}
         onSelectUser={setActiveUser}
         cartItems={cartItems}
         onOpenCart={() => setIsCartOpen(true)}
-        wishlistCount={wishlistItems.length}
-        onOpenWishlist={() => setIsWishlistOpen(true)}
-        compareCount={compareProductIds.length}
-        onOpenCompare={() => setIsCompareModalOpen(true)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         selectedCategory={selectedCategory}
@@ -317,7 +213,7 @@ export default function App() {
         onSelectProduct={setSelectedProduct}
       />
 
-      {/* Backend API Contract Status Banner */}
+      {/* Backend API Status Banner */}
       {isBackendConnected !== null && (
         <div className={`px-4 py-1.5 text-xs flex items-center justify-between border-b transition-colors ${
           isBackendConnected
@@ -327,14 +223,14 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
             <span className="font-semibold">
-              {isBackendConnected ? 'Spring Boot REST API: Connected (:8080)' : 'Backend API: Offline Fallback Active'}
+              {isBackendConnected ? 'FastAPI Recommendation API: Connected (:8000)' : 'Backend API: Offline Fallback Active'}
             </span>
             <span className="text-gray-500 text-[11px] hidden sm:inline">
-              ({isBackendConnected ? 'Loaded catalog items from in-memory Spring Boot store' : 'Using in-browser offline simulation'})
+              ({isBackendConnected ? 'Loaded catalog items from recommendation backend' : 'Using in-browser offline simulation'})
             </span>
           </div>
           <span className="text-[11px] font-mono text-gray-600">
-            Contract: API_CONTRACT.md
+            FastAPI Service (:8000)
           </span>
         </div>
       )}
@@ -352,10 +248,7 @@ export default function App() {
       <main className="flex-1">
         {isBrowsingAll ? (
           <>
-            {/* Figma Split Hero Showcase */}
-            <HeroCarousel onSelectCategory={setSelectedCategory} />
-
-            {/* Figma Flash Sales & Browse By Category Grid */}
+            {/* Category Grid & Flash Products */}
             <CategoryCardsGrid
               products={rankedProducts}
               activeUser={activeUser}
@@ -365,46 +258,42 @@ export default function App() {
                 e.stopPropagation();
                 handleAddToCart(p);
               }}
-              wishlistProductIds={wishlistProductIds}
-              onToggleWishlist={handleToggleWishlist}
-              compareProductIds={compareProductIds}
-              onToggleCompare={handleToggleCompare}
             />
 
-            {/* Figma Best Selling Products & Personalized Rails */}
+            {/* Best Selling Products & Personalized Rails */}
             <div className="max-w-[1400px] mx-auto px-4 space-y-16 py-8">
-              {/* Recommendation Rail 1: Best Selling Products (This Month) */}
+              {/* Recommendation Rail 1: Best Selling Products */}
               <RecommendationRail
                 title="Best Selling Products"
                 subtitle="This Month"
-                algorithmBadge="K-Core 20 Verified"
+                algorithmBadge="Verified Top Seller"
                 products={bestSellingRail}
                 onSelectProduct={setSelectedProduct}
                 onAddToCart={(p, e) => {
                   e.stopPropagation();
                   handleAddToCart(p);
                 }}
-                wishlistProductIds={wishlistProductIds}
-                onToggleWishlist={handleToggleWishlist}
-                compareProductIds={compareProductIds}
-                onToggleCompare={handleToggleCompare}
               />
 
-              {/* Recommendation Rail 2: Explore Our Products (Personalized) */}
+              {/* Recommendation Rail 2: Recommended For You */}
               <RecommendationRail
                 title={`Recommended For You (${activeUser.name.split(' ')[0]})`}
                 subtitle="Our Products"
-                algorithmBadge={`${recEngineMode.toUpperCase()} Model`}
+                algorithmBadge={
+                  recEngineMode === 'two-tower'
+                    ? 'Personalized Match'
+                    : recEngineMode === 'collaborative-filtering'
+                    ? 'Community Pick'
+                    : recEngineMode === 'hybrid-graph'
+                    ? 'Trending Discovery'
+                    : 'Top Rated'
+                }
                 products={personalizedRail}
                 onSelectProduct={setSelectedProduct}
                 onAddToCart={(p, e) => {
                   e.stopPropagation();
                   handleAddToCart(p);
                 }}
-                wishlistProductIds={wishlistProductIds}
-                onToggleWishlist={handleToggleWishlist}
-                compareProductIds={compareProductIds}
-                onToggleCompare={handleToggleCompare}
               />
 
               {/* Complete Catalog Section */}
@@ -458,17 +347,10 @@ export default function App() {
                         e.stopPropagation();
                         handleAddToCart(p);
                       }}
-                      isWishlisted={wishlistProductIds.includes(product.id)}
-                      onToggleWishlist={handleToggleWishlist}
-                      isCompared={compareProductIds.includes(product.id)}
-                      onToggleCompare={handleToggleCompare}
                     />
                   ))}
                 </div>
               </section>
-
-              {/* Figma 3-Column Value Props (Delivery, 24/7 Service, Money Back) */}
-              <ValuePropsSection />
             </div>
           </>
         ) : (
@@ -555,10 +437,6 @@ export default function App() {
                       e.stopPropagation();
                       handleAddToCart(p);
                     }}
-                    isWishlisted={wishlistProductIds.includes(product.id)}
-                    onToggleWishlist={handleToggleWishlist}
-                    isCompared={compareProductIds.includes(product.id)}
-                    onToggleCompare={handleToggleCompare}
                   />
                 ))}
               </div>
@@ -567,49 +445,15 @@ export default function App() {
         )}
       </main>
 
-      {/* Floating Compare Dock Bar */}
-      <CompareFloatingBar
-        compareProducts={compareProducts}
-        onOpenCompareModal={() => setIsCompareModalOpen(true)}
-        onRemoveProduct={handleRemoveFromCompare}
-        onClearAll={handleClearCompare}
-      />
-
-      {/* Side-by-Side Product Comparison Modal */}
-      <CompareModal
-        isOpen={isCompareModalOpen}
-        onClose={() => setIsCompareModalOpen(false)}
-        compareProducts={compareProducts}
-        onRemoveProduct={handleRemoveFromCompare}
-        onClearAll={handleClearCompare}
-        onAddToCart={handleAddToCart}
-        onSelectProduct={setSelectedProduct}
-      />
-
-      {/* Wishlist Drawer */}
-      <WishlistDrawer
-        isOpen={isWishlistOpen}
-        onClose={() => setIsWishlistOpen(false)}
-        wishlistItems={wishlistItems}
-        onRemoveFromWishlist={handleRemoveFromWishlist}
-        onAddToCart={handleAddToCart}
-        onSelectProduct={setSelectedProduct}
-        onClearWishlist={handleClearWishlist}
-      />
-
       {/* Product Detail Modal */}
       <ProductDetailModal
         product={selectedProduct}
         onClose={() => setSelectedProduct(null)}
         onAddToCart={handleAddToCart}
         onSelectProduct={setSelectedProduct}
-        isWishlisted={selectedProduct ? wishlistProductIds.includes(selectedProduct.id) : false}
-        onToggleWishlist={handleToggleWishlist}
-        isCompared={selectedProduct ? compareProductIds.includes(selectedProduct.id) : false}
-        onToggleCompare={handleToggleCompare}
       />
 
-      {/* Cart Drawer */}
+      {/* Cart Drawer - Kept for User's Basket & Association Exploration */}
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
@@ -618,9 +462,6 @@ export default function App() {
         onRemoveItem={handleRemoveFromCart}
         onSelectProduct={setSelectedProduct}
         onAddToCart={handleAddToCart}
-        activeUserId={activeUser.id}
-        activeUserName={activeUser.name}
-        activeUserEmail="alice@example.com"
         onClearCart={() => setCartItems([])}
       />
 
@@ -644,7 +485,7 @@ export default function App() {
         }}
       />
 
-      {/* Modern Figma Footer */}
+      {/* Modern Footer */}
       <Footer
         onOpenArchitecture={() => setIsArchitectureOpen(true)}
         onOpenDashboardDesign={() => setIsDashboardDesignOpen(true)}

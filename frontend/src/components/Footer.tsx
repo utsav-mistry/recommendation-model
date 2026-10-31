@@ -140,7 +140,7 @@ export const Footer: React.FC<FooterProps> = ({
       {/* Bottom Copyright Bar with Back to Top */}
       <div className="max-w-[1400px] mx-auto px-4 mt-12 pt-6 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
         <p className="text-center sm:text-left">
-          &copy; Copyright Rimel 2022 • Powered by Amazon 2023 20-Core Ecommerce Recommendation Model
+          &copy; Copyright Rimel 2022 • Powered by Amazon 2023 Recommendation Engine
         </p>
 
         <button

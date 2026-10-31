@@ -1,6 +1,6 @@
 /**
- * E-Commerce API Contract Types
- * Directly matched with API_CONTRACT.md and Spring Boot backend
+ * E-Commerce & Recommendation API Contract Types
+ * Cleaned to focus on Products, Categories, Cart, and Reviews
  */
 
 export interface ApiResponse<T> {
@@ -10,36 +10,12 @@ export interface ApiResponse<T> {
   timestamp: string;
 }
 
-export type OrderStatus =
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'PROCESSING'
-  | 'SHIPPED'
-  | 'DELIVERED'
-  | 'CANCELLED';
-
-export type PaymentStatus =
-  | 'PENDING'
-  | 'PAID'
-  | 'FAILED'
-  | 'REFUNDED';
-
-export type UserRole = 'CUSTOMER' | 'ADMIN';
-
 export type ProductSortBy =
   | 'price_asc'
   | 'price_desc'
   | 'rating'
   | 'newest'
   | 'name';
-
-export interface BackendAddress {
-  street: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-}
 
 export interface BackendCategory {
   id: number;
@@ -81,36 +57,6 @@ export interface BackendCart {
   updatedAt: string;
 }
 
-export interface BackendOrderItem {
-  productId: number;
-  productName: string;
-  unitPrice: number;
-  quantity: number;
-  subtotal: number;
-  imageUrl?: string;
-}
-
-export interface BackendOrder {
-  id: number;
-  orderNumber: string;
-  userId: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone?: string;
-  shippingAddress: BackendAddress;
-  items: BackendOrderItem[];
-  subtotal: number;
-  discount: number;
-  shippingFee: number;
-  totalAmount: number;
-  status: OrderStatus;
-  paymentStatus: PaymentStatus;
-  paymentMethod: string;
-  couponCode?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface BackendReview {
   id: number;
   productId: number;
@@ -118,32 +64,6 @@ export interface BackendReview {
   userName: string;
   rating: number;
   comment: string;
-  createdAt: string;
-}
-
-export interface BackendCoupon {
-  code: string;
-  discountPercentage: number;
-  maxDiscountAmount?: number;
-  minOrderAmount?: number;
-  active: boolean;
-}
-
-export interface CouponValidationResult {
-  couponCode: string;
-  orderAmount: number;
-  discountAmount: number;
-  finalAmount: number;
-  valid: boolean;
-}
-
-export interface BackendUser {
-  id: number;
-  name: string;
-  email: string;
-  phone?: string;
-  role: UserRole;
-  addresses: BackendAddress[];
   createdAt: string;
 }
 
@@ -164,27 +84,9 @@ export interface UpdateCartItemRequest {
   quantity: number;
 }
 
-export interface CheckoutRequest {
-  userId: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone?: string;
-  shippingAddress: BackendAddress;
-  paymentMethod?: string;
-  couponCode?: string;
-}
-
 export interface ReviewRequest {
   userId: string;
   userName: string;
   rating: number;
   comment: string;
-}
-
-export interface UserRegisterRequest {
-  name: string;
-  email: string;
-  phone?: string;
-  role?: UserRole;
-  address?: BackendAddress;
 }

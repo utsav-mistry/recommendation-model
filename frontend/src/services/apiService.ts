@@ -3,12 +3,8 @@ import {
   BackendProduct,
   BackendCategory,
   BackendCart,
-  BackendOrder,
   BackendReview,
-  BackendUser,
-  CouponValidationResult,
   ProductFilterParams,
-  CheckoutRequest,
   ReviewRequest
 } from '../types/api';
 import { Product } from '../types/ecommerce';
@@ -17,7 +13,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   (typeof window !== 'undefined' && window.location.port === '3000'
     ? '/api'
-    : 'http://localhost:8080/api');
+    : 'http://localhost:8000/api');
 
 /**
  * Universal fetch wrapper with typed response and error handling
@@ -46,12 +42,14 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
 export const apiService = {
   /**
-   * Healthcheck to verify Spring Boot backend connectivity
+   * Healthcheck to verify FastAPI backend connectivity
    */
   async checkHealth(): Promise<boolean> {
     try {
       const res = await fetch(`${API_BASE_URL}/products`, { method: 'GET' });
-      return res.ok;
+      if (res.ok) return true;
+      const healthRes = await fetch(`${API_BASE_URL}/health`, { method: 'GET' });
+      return healthRes.ok;
     } catch {
       return false;
     }
@@ -117,35 +115,6 @@ export const apiService = {
   },
 
   /**
-   * Orders & Checkout API
-   */
-  async checkout(checkoutReq: CheckoutRequest): Promise<BackendOrder> {
-    return request<BackendOrder>('/orders/checkout', {
-      method: 'POST',
-      body: JSON.stringify(checkoutReq)
-    });
-  },
-
-  async getOrdersByUser(userId: string): Promise<BackendOrder[]> {
-    return request<BackendOrder[]>(`/orders/user/${encodeURIComponent(userId)}`);
-  },
-
-  async cancelOrder(orderId: number): Promise<BackendOrder> {
-    return request<BackendOrder>(`/orders/${orderId}/cancel`, {
-      method: 'POST'
-    });
-  },
-
-  /**
-   * Coupons API
-   */
-  async validateCoupon(code: string, orderAmount: number): Promise<CouponValidationResult> {
-    return request<CouponValidationResult>(
-      `/coupons/validate/${encodeURIComponent(code)}?orderAmount=${orderAmount}`
-    );
-  },
-
-  /**
    * Reviews API
    */
   async getReviews(productId: number): Promise<BackendReview[]> {
@@ -157,18 +126,11 @@ export const apiService = {
       method: 'POST',
       body: JSON.stringify(req)
     });
-  },
-
-  /**
-   * Users API
-   */
-  async getUser(id: number): Promise<BackendUser> {
-    return request<BackendUser>(`/users/${id}`);
   }
 };
 
 /**
- * Adapter: Convert BackendProduct -> Frontend Product model
+ * Adapter: Convert BackendProduct -> Frontend Product entity
  * seamlessly maps fields while providing full UI compatibility
  */
 export function mapBackendProductToFrontend(bp: BackendProduct): Product {

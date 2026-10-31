@@ -102,8 +102,8 @@ export const ARCHITECTURE_MODULES: ArchitectureModule[] = [
     ]
   },
   {
-    id: 'model-architecture',
-    title: 'Module 3: Recommendation Model Architecture (Two-Stage Pipeline)',
+    id: 'recommendation-pipeline',
+    title: 'Module 3: Recommendation Pipeline Architecture (Two-Stage Pipeline)',
     subtitle: 'Candidate generation (Retrieval) followed by heavy ranking and diversification',
     badge: 'Inference Architecture',
     components: [
@@ -149,7 +149,7 @@ export const ARCHITECTURE_MODULES: ArchitectureModule[] = [
   {
     id: 'visualization-dashboard',
     title: 'Module 4: Recommendation Engine & ReviewStream Dashboard',
-    subtitle: 'Operational observability, model metrics, review sentiment shifts, and A/B test telemetry',
+    subtitle: 'Operational observability, recommendation metrics, review sentiment shifts, and A/B test telemetry',
     badge: 'Visualization & Operations',
     components: [
       {
@@ -179,25 +179,25 @@ export const ARCHITECTURE_MODULES: ArchitectureModule[] = [
     ],
     flowSteps: [
       'Event logger records impression events when recommendation rails enter viewport.',
-      'Click and Add-to-Cart events sent with attribution token (rec_rail_id, model_version, rank_position).',
+      'Click and Add-to-Cart events sent with attribution token (rec_rail_id, version_id, rank_position).',
       'Dashboard aggregates metrics across 1m, 1h, and 24h rolling windows.',
       'Product managers inspect per-category recommendation health and review stream velocity.'
     ],
     keyDecisions: [
-      'Attribution Tracking: Embed recommendation rail ID and model snapshot hash into every add-to-cart payload.',
+      'Attribution Tracking: Embed recommendation rail ID and pipeline snapshot hash into every add-to-cart payload.',
       'Sentiment Trend Drift: Combine review star rating delta with NLP sentiment score delta for early quality warning.'
     ]
   }
 ];
 
 export const UNIVERSAL_CHATBOT_PROMPT = `
-# SYSTEM PROMPT: Production-Grade E-Commerce Recommendation Model & ReviewStream Pipeline
+# SYSTEM PROMPT: Production-Grade E-Commerce Recommendation System & ReviewStream Pipeline
 
 Act as a Principal Staff Machine Learning Engineer and Distributed Systems Architect specializing in Large-Scale Recommender Systems (RecSys) and NLP Pipelines.
 
 ## 1. Project Overview
 Build an end-to-end, production-ready system architecture for:
-- Project Name: "Ecommerce Recommendation Model" (incorporating ReviewStream for product feedback processing)
+- Project Name: "Ecommerce Recommendation System" (incorporating ReviewStream for product feedback processing)
 - Dataset: Hugging Face \`ChenglongMa/amazon-2023-all-category-k-core\` (specifically the 20-core filtered shards)
 - Ingestion & Pipeline Reference: Kaggle script \`utsavmistry30/hugging-face-dataset-tests\`
 - Core Architecture Reference: Notion "Core Recommendation Engine Team Architecture Summary"
@@ -214,11 +214,11 @@ Build an end-to-end, production-ready system architecture for:
 ### Module B: ReviewStream & Feature Engineering Pipeline
 - Text Processing: Clean raw review text, remove HTML artifacts, tokenize with BPE tokenizer.
 - Sentiment Extraction: RoBERTa sentiment classifier producing continuous polarity score [-1.0 to +1.0] and verified purchase weighting.
-- Sequence Modeling: Sliding window of user chronological interaction history (length=20) with exponential time decay.
+- Sequence Analysis: Sliding window of user chronological interaction history (length=20) with exponential time decay.
 - Item Embeddings: Dense 384-dim semantic representations (all-MiniLM-L6-v2) fine-tuned on Amazon product catalogs.
 - Storage: Feast Feature Store (Offline: S3 Parquet / BigQuery; Online: Low-latency Redis cluster).
 
-### Module C: Recommendation Model Architecture (Two-Stage RecSys)
+### Module C: Recommendation Pipeline Architecture (Two-Stage RecSys)
 1. Candidate Generation / Retrieval (Stage 1):
    - Two-Tower DSSM (User Tower encodes sequence + demographics; Item Tower encodes item ID + metadata + embeddings).
    - Serving: Approximate Nearest Neighbor (ANN) index using Faiss HNSW or Milvus vector database.
@@ -239,9 +239,9 @@ Build an end-to-end, production-ready system architecture for:
 ### Module E: Visualization & Operational Dashboard Design
 - Executive Metrics: Online CTR (+18.4% target), Conversion Lift, NDCG@10, Hit Rate@20, Average Order Value (AOV).
 - ReviewStream Health: Hourly review ingestion rate, sentiment shift heatmaps, product defect alert spikes.
-- A/B Testing: Split routing between Model A (Two-Tower + DCN-v2) vs Model B (Graph CF) vs Baseline (Popularity).
+- A/B Testing: Split routing between Pipeline A (Two-Tower + DCN-v2) vs Pipeline B (Graph CF) vs Baseline (Popularity).
 
 ## 3. Implementation Requirements
-- Provide complete code snippets for: PySpark ingestion script, PyTorch Two-Tower model definition, FastAPI serving endpoint, and React dashboard metrics component.
+- Provide complete code snippets for: PySpark ingestion script, PyTorch Two-Tower definition, FastAPI serving endpoint, and React dashboard metrics component.
 - Strictly adhere to production best practices: type annotations, error handling, dockerfile, and latency benchmarking.
 `.trim();

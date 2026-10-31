@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Product } from '../types/ecommerce';
 import { ProductCard } from './ProductCard';
-import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface RecommendationRailProps {
   title: string;
@@ -11,10 +11,6 @@ interface RecommendationRailProps {
   onSelectProduct: (product: Product) => void;
   onAddToCart: (product: Product, e: React.MouseEvent) => void;
   showRecReason?: boolean;
-  wishlistProductIds?: string[];
-  onToggleWishlist?: (product: Product, e: React.MouseEvent) => void;
-  compareProductIds?: string[];
-  onToggleCompare?: (product: Product, e: React.MouseEvent) => void;
 }
 
 export const RecommendationRail: React.FC<RecommendationRailProps> = ({
@@ -24,11 +20,7 @@ export const RecommendationRail: React.FC<RecommendationRailProps> = ({
   products,
   onSelectProduct,
   onAddToCart,
-  showRecReason = true,
-  wishlistProductIds = [],
-  onToggleWishlist,
-  compareProductIds = [],
-  onToggleCompare
+  showRecReason = true
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +57,7 @@ export const RecommendationRail: React.FC<RecommendationRailProps> = ({
           </h3>
         </div>
 
-        {/* Circular Arrow Navigation Controls (Figma Style) */}
+        {/* Circular Arrow Navigation Controls */}
         <div className="flex items-center gap-2 self-end sm:self-auto">
           <button
             onClick={() => handleScroll('left')}
@@ -96,10 +88,6 @@ export const RecommendationRail: React.FC<RecommendationRailProps> = ({
               onSelectProduct={onSelectProduct}
               onAddToCart={onAddToCart}
               showRecReason={showRecReason}
-              isWishlisted={wishlistProductIds.includes(product.id)}
-              onToggleWishlist={onToggleWishlist}
-              isCompared={compareProductIds.includes(product.id)}
-              onToggleCompare={onToggleCompare}
             />
           </div>
         ))}

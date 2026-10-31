@@ -7,10 +7,7 @@ import {
   Watch, 
   Camera, 
   Headphones, 
-  Gamepad2, 
-  ArrowLeft, 
-  ArrowRight,
-  Sparkles
+  Gamepad2 
 } from 'lucide-react';
 
 interface CategoryCardsGridProps {
@@ -19,22 +16,13 @@ interface CategoryCardsGridProps {
   onSelectProduct: (product: Product) => void;
   onSelectCategory: (category: string) => void;
   onAddToCart: (product: Product, e: React.MouseEvent) => void;
-  wishlistProductIds: string[];
-  onToggleWishlist: (product: Product, e: React.MouseEvent) => void;
-  compareProductIds: string[];
-  onToggleCompare: (product: Product, e: React.MouseEvent) => void;
 }
 
 export const CategoryCardsGrid: React.FC<CategoryCardsGridProps> = ({
   products,
-  activeUser,
   onSelectProduct,
   onSelectCategory,
-  onAddToCart,
-  wishlistProductIds,
-  onToggleWishlist,
-  compareProductIds,
-  onToggleCompare
+  onAddToCart
 }) => {
   // Flash Sales Countdown Timer
   const [timeLeft, setTimeLeft] = useState({
@@ -128,10 +116,6 @@ export const CategoryCardsGrid: React.FC<CategoryCardsGridProps> = ({
               product={p}
               onSelectProduct={onSelectProduct}
               onAddToCart={onAddToCart}
-              isWishlisted={wishlistProductIds.includes(p.id)}
-              onToggleWishlist={onToggleWishlist}
-              isCompared={compareProductIds.includes(p.id)}
-              onToggleCompare={onToggleCompare}
             />
           ))}
         </div>

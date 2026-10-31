@@ -1,27 +1,19 @@
 import React from 'react';
 import { Product } from '../types/ecommerce';
-import { Star, Sparkles, ShoppingCart, Heart, Eye, SlidersHorizontal, Check } from 'lucide-react';
+import { Star, Sparkles, ShoppingCart, Eye } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
   onSelectProduct: (product: Product) => void;
   onAddToCart: (product: Product, e: React.MouseEvent) => void;
   showRecReason?: boolean;
-  isWishlisted?: boolean;
-  onToggleWishlist?: (product: Product, e: React.MouseEvent) => void;
-  isCompared?: boolean;
-  onToggleCompare?: (product: Product, e: React.MouseEvent) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onSelectProduct,
   onAddToCart,
-  showRecReason = true,
-  isWishlisted = false,
-  onToggleWishlist,
-  isCompared = false,
-  onToggleCompare
+  showRecReason = true
 }) => {
   const discountPercent = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
@@ -49,27 +41,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </span>
         )}
 
-        {/* Top-Right Action Floating Column (Heart, Eye, Compare) */}
+        {/* Top-Right Action Floating Quick View Eye */}
         <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
-          {/* Wishlist Heart */}
-          {onToggleWishlist && (
-            <button
-              onClick={(e) => onToggleWishlist(product, e)}
-              className={`w-8 h-8 rounded-full flex items-center justify-center bg-white shadow-xs transition hover:scale-110 cursor-pointer ${
-                isWishlisted ? 'text-[#db4444]' : 'text-gray-700 hover:text-[#db4444]'
-              }`}
-              title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
-              aria-label="Wishlist toggle"
-            >
-              <Heart
-                className={`w-4 h-4 transition-transform active:scale-125 ${
-                  isWishlisted ? 'fill-[#db4444] stroke-[#db4444]' : 'stroke-current'
-                }`}
-              />
-            </button>
-          )}
-
-          {/* Quick View Eye */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -81,20 +54,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           >
             <Eye className="w-4 h-4" />
           </button>
-
-          {/* Compare Button */}
-          {onToggleCompare && (
-            <button
-              onClick={(e) => onToggleCompare(product, e)}
-              className={`w-8 h-8 rounded-full flex items-center justify-center bg-white shadow-xs transition hover:scale-110 cursor-pointer ${
-                isCompared ? 'bg-amber-100 text-amber-900 ring-2 ring-amber-400' : 'text-gray-700 hover:text-black'
-              }`}
-              title={isCompared ? 'Remove from comparison' : 'Compare specifications'}
-              aria-label="Compare toggle"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-            </button>
-          )}
         </div>
 
         {/* Product Image */}
@@ -152,14 +111,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </span>
         </div>
 
-        {/* 20-Core Density & Rec Reason */}
+        {/* 20-Core Density */}
         <div className="flex items-center justify-between text-[11px] text-gray-400 pt-0.5">
           <span>{product.kCoreInteractionCount} in 20-core</span>
-          {isCompared && (
-            <span className="text-amber-600 font-bold flex items-center gap-0.5">
-              <Check className="w-3 h-3" /> Compared
-            </span>
-          )}
         </div>
       </div>
     </div>

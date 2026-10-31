@@ -4,16 +4,9 @@ import {
   X, 
   Star, 
   Check, 
-  ShieldCheck, 
-  Truck, 
-  RotateCcw, 
   Sparkles, 
   ShoppingCart, 
-  ThumbsUp,
-  Cpu,
-  Plus,
-  Heart,
-  SlidersHorizontal
+  Plus
 } from 'lucide-react';
 import { AMAZON_PRODUCTS } from '../data/amazon2023Data';
 
@@ -22,21 +15,13 @@ interface ProductDetailModalProps {
   onClose: () => void;
   onAddToCart: (product: Product, quantity?: number) => void;
   onSelectProduct: (product: Product) => void;
-  isWishlisted?: boolean;
-  onToggleWishlist?: (product: Product) => void;
-  isCompared?: boolean;
-  onToggleCompare?: (product: Product) => void;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   product,
   onClose,
   onAddToCart,
-  onSelectProduct,
-  isWishlisted = false,
-  onToggleWishlist,
-  isCompared = false,
-  onToggleCompare
+  onSelectProduct
 }) => {
   if (!product) return null;
 
@@ -44,7 +29,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [quantity, setQuantity] = useState(1);
   const [bundleChecked, setBundleChecked] = useState(true);
 
-  // Find co-purchased item for "Frequently Bought Together"
+  // Find co-purchased item for "Frequently Bought Together" (recommendation signal)
   const coPurchasedProduct = AMAZON_PRODUCTS.find((p) =>
     product.coPurchasedAsins.includes(p.asin)
   ) || AMAZON_PRODUCTS.find((p) => p.asin !== product.asin);
@@ -90,7 +75,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         {/* Modal Body */}
         <div className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Column 1: Image Gallery (4 cols) */}
+            {/* Column 1: Image Gallery (5 cols) */}
             <div className="lg:col-span-5 flex flex-col sm:flex-row gap-4">
               {/* Thumbnail Strip */}
               <div className="flex sm:flex-col gap-2 order-2 sm:order-1 overflow-x-auto sm:overflow-visible">
@@ -178,18 +163,18 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </p>
               </div>
 
-              {/* RecSys Why Recommended Badge */}
+              {/* Why Recommended Badge */}
               <div className="bg-amber-50/80 border border-amber-300/80 rounded-md p-3 text-xs text-amber-950 space-y-1">
                 <div className="flex items-center gap-1.5 font-bold text-amber-900">
                   <Sparkles className="w-4 h-4 text-amber-600" />
-                  <span>Recommendation Engine Affinity Diagnostics</span>
+                  <span>Recommendation Highlights</span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-amber-900 font-medium">
                   {product.recReason}
                 </p>
                 <div className="flex items-center gap-3 text-[10px] text-amber-800 pt-1 border-t border-amber-200">
-                  <span>Cosine Similarity: <strong>{product.twoTowerEmbeddingSimilarity || 0.94}</strong></span>
-                  <span>Cluster: <strong>{product.category}</strong></span>
+                  <span>Match Score: <strong>{Math.round((product.twoTowerEmbeddingSimilarity || 0.94) * 100)}%</strong></span>
+                  <span>Category: <strong>{product.category}</strong></span>
                 </div>
               </div>
 
@@ -206,7 +191,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Column 3: Amazon Buy Box (3 cols) */}
+            {/* Column 3: Buy Box (3 cols) */}
             <div className="lg:col-span-3">
               <div className="border border-gray-300 rounded-md p-4 space-y-3 bg-[#fdfdfd] shadow-sm">
                 <div className="text-2xl font-bold text-gray-900">
@@ -220,9 +205,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </div>
                   <p className="text-gray-800">
                     FREE delivery <strong>Tomorrow by 10 PM</strong>
-                  </p>
-                  <p className="text-teal-700 font-medium text-xs">
-                    Or fastest delivery Today 2 PM - 6 PM
                   </p>
                 </div>
 
@@ -247,7 +229,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </select>
                 </div>
 
-                {/* Buttons */}
+                {/* Add to Cart button */}
                 <div className="space-y-2 pt-2">
                   <button
                     onClick={() => {
@@ -259,49 +241,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     <ShoppingCart className="w-4 h-4" />
                     <span>Add to Cart</span>
                   </button>
-                  <button
-                    onClick={() => {
-                      onAddToCart(product, quantity);
-                      onClose();
-                    }}
-                    className="w-full bg-black hover:bg-neutral-800 text-white font-semibold text-xs py-2.5 px-4 rounded-md shadow-xs transition cursor-pointer"
-                  >
-                    Buy Now
-                  </button>
-
-                  {/* Wishlist & Compare Buttons */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    {onToggleWishlist && (
-                      <button
-                        onClick={() => onToggleWishlist(product)}
-                        className={`w-full py-1.5 px-2 rounded-md border text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                          isWishlisted
-                            ? 'bg-rose-50 text-rose-700 border-rose-300'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                        }`}
-                      >
-                        <Heart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-rose-600 text-rose-600' : 'text-gray-500'}`} />
-                        <span>{isWishlisted ? 'Saved' : 'Wish List'}</span>
-                      </button>
-                    )}
-
-                    {onToggleCompare && (
-                      <button
-                        onClick={() => onToggleCompare(product)}
-                        className={`w-full py-1.5 px-2 rounded-md border text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                          isCompared
-                            ? 'bg-amber-50 text-amber-900 border-amber-400'
-                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-                        }`}
-                      >
-                        <SlidersHorizontal className="w-3.5 h-3.5" />
-                        <span>{isCompared ? 'Compared' : 'Compare'}</span>
-                      </button>
-                    )}
-                  </div>
                 </div>
 
-                {/* Secure transaction */}
+                {/* Details */}
                 <div className="pt-2 border-t border-gray-200 text-[11px] text-gray-500 space-y-1">
                   <div className="flex items-center justify-between">
                     <span>Ships from</span>
@@ -432,9 +374,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   {/* Helpful count */}
                   <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-2">
                     <span>{rev.helpfulVotes} people found this helpful</span>
-                    <button className="text-xs text-gray-600 hover:text-gray-900 border border-gray-300 rounded px-3 py-0.5 bg-gray-50 hover:bg-gray-100 cursor-pointer">
-                      Helpful
-                    </button>
                   </div>
                 </div>
               ))}

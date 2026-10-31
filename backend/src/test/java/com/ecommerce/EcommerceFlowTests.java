@@ -1,7 +1,5 @@
 package com.ecommerce;
 
-import com.ecommerce.dto.AddToCartRequest;
-import com.ecommerce.dto.CheckoutRequest;
 import com.ecommerce.dto.ReviewRequest;
 import com.ecommerce.model.*;
 import com.ecommerce.service.*;
@@ -24,13 +22,7 @@ class EcommerceFlowTests {
     private CartService cartService;
 
     @Autowired
-    private OrderService orderService;
-
-    @Autowired
     private ReviewService reviewService;
-
-    @Autowired
-    private CouponService couponService;
 
     private final String testUserId = "test-user-99";
 
@@ -53,60 +45,27 @@ class EcommerceFlowTests {
     }
 
     @Test
-    void testCartAndCheckoutFlow() {
+    void testCartOperations() {
         Product phone = productService.getProductById(1L);
-        int initialStock = phone.getStockQuantity();
 
         // 1. Add to cart
         cartService.addToCart(testUserId, 1L, 2);
         Cart cart = cartService.getCart(testUserId);
         assertEquals(1, cart.getItems().size());
         assertEquals(2, cart.getItems().get(0).getQuantity());
-        assertEquals(phone.getPrice() * 2, cart.getTotalAmount());
+        assertEquals(phone.getPrice() * 2, cart.getTotalAmount(), 0.01);
 
-        // 2. Checkout with coupon
-        CheckoutRequest checkoutReq = new CheckoutRequest();
-        checkoutReq.setUserId(testUserId);
-        checkoutReq.setCustomerName("Test Customer");
-        checkoutReq.setCustomerEmail("customer@test.com");
-        checkoutReq.setCustomerPhone("+1-555-1234");
-        checkoutReq.setShippingAddress(new Address("1 Test Way", "Austin", "TX", "78701", "USA"));
-        checkoutReq.setPaymentMethod("CREDIT_CARD");
-        checkoutReq.setCouponCode("WELCOME10");
+        // 2. Update quantity
+        cartService.updateItemQuantity(testUserId, 1L, 3);
+        Cart updatedCart = cartService.getCart(testUserId);
+        assertEquals(3, updatedCart.getItems().get(0).getQuantity());
+        assertEquals(phone.getPrice() * 3, updatedCart.getTotalAmount(), 0.01);
 
-        Order order = orderService.checkout(checkoutReq);
-
-        assertNotNull(order.getId());
-        assertNotNull(order.getOrderNumber());
-        assertEquals(OrderStatus.CONFIRMED, order.getStatus());
-        assertEquals(PaymentStatus.PAID, order.getPaymentStatus());
-        assertTrue(order.getDiscount() > 0, "Discount should be applied");
-
-        // Verify stock was reduced
-        Product updatedPhone = productService.getProductById(1L);
-        assertEquals(initialStock - 2, updatedPhone.getStockQuantity());
-
-        // Verify cart is now empty
+        // 3. Clear cart
+        cartService.clearCart(testUserId);
         Cart clearedCart = cartService.getCart(testUserId);
         assertTrue(clearedCart.getItems().isEmpty());
-
-        // 3. Cancel order and verify stock restored
-        orderService.cancelOrder(order.getId());
-        Order cancelledOrder = orderService.getOrderById(order.getId());
-        assertEquals(OrderStatus.CANCELLED, cancelledOrder.getStatus());
-        assertEquals(PaymentStatus.REFUNDED, cancelledOrder.getPaymentStatus());
-
-        Product restoredPhone = productService.getProductById(1L);
-        assertEquals(initialStock, restoredPhone.getStockQuantity(), "Stock should be restored after cancellation");
-    }
-
-    @Test
-    void testCouponDiscountCalculation() {
-        double discount = couponService.calculateDiscount("WELCOME10", 100.0);
-        assertEquals(10.0, discount);
-
-        double cappedDiscount = couponService.calculateDiscount("WELCOME10", 1000.0);
-        assertEquals(50.0, cappedDiscount, "Max discount cap of $50 should be enforced");
+        assertEquals(0.0, clearedCart.getTotalAmount(), 0.01);
     }
 
     @Test

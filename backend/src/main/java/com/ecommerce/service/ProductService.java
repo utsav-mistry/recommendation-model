@@ -2,7 +2,6 @@ package com.ecommerce.service;
 
 import com.ecommerce.dto.ProductRequest;
 import com.ecommerce.exception.BadRequestException;
-import com.ecommerce.exception.InsufficientStockException;
 import com.ecommerce.exception.ResourceNotFoundException;
 import com.ecommerce.model.Product;
 import com.ecommerce.repository.ProductRepository;
@@ -58,22 +57,6 @@ public class ProductService {
     public void deleteProduct(Long id) {
         Product product = getProductById(id);
         product.setActive(false);
-        productRepository.save(product);
-    }
-
-    public synchronized void decreaseStock(Long productId, int quantity) {
-        Product product = getProductById(productId);
-        if (product.getStockQuantity() < quantity) {
-            throw new InsufficientStockException("Insufficient stock for product '" + product.getName()
-                    + "'. Available: " + product.getStockQuantity() + ", Requested: " + quantity);
-        }
-        product.setStockQuantity(product.getStockQuantity() - quantity);
-        productRepository.save(product);
-    }
-
-    public synchronized void increaseStock(Long productId, int quantity) {
-        Product product = getProductById(productId);
-        product.setStockQuantity(product.getStockQuantity() + quantity);
         productRepository.save(product);
     }
 

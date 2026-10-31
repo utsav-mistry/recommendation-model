@@ -48,7 +48,7 @@ export const DashboardDesignModal: React.FC<DashboardDesignModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Recommended UI/UX layout for monitoring model inference, review feedback ingestion, and A/B experiments
+                Recommended UI/UX layout for monitoring recommendation inference, review feedback ingestion, and A/B experiments
               </p>
             </div>
           </div>
@@ -292,7 +292,7 @@ export const DashboardDesignModal: React.FC<DashboardDesignModalProps> = ({
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-800/80 text-slate-300 border-b border-slate-700">
                   <tr>
-                    <th className="py-2.5 px-3 font-semibold">Model Variant</th>
+                    <th className="py-2.5 px-3 font-semibold">Recommendation Variant</th>
                     <th className="py-2.5 px-3 font-semibold">Architecture</th>
                     <th className="py-2.5 px-3 font-semibold">NDCG@10</th>
                     <th className="py-2.5 px-3 font-semibold">Online CTR</th>
@@ -303,7 +303,7 @@ export const DashboardDesignModal: React.FC<DashboardDesignModalProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-800 font-mono">
                   <tr className="hover:bg-slate-800/40 text-slate-200">
-                    <td className="py-2.5 px-3 font-bold text-amber-300">Model A (Challenger)</td>
+                    <td className="py-2.5 px-3 font-bold text-amber-300">Variant A (Challenger)</td>
                     <td className="py-2.5 px-3 text-slate-300">Two-Tower DSSM + DCN-v2</td>
                     <td className="py-2.5 px-3 text-emerald-400">0.438</td>
                     <td className="py-2.5 px-3 text-emerald-400">4.82%</td>
@@ -316,7 +316,7 @@ export const DashboardDesignModal: React.FC<DashboardDesignModalProps> = ({
                     </td>
                   </tr>
                   <tr className="hover:bg-slate-800/40 text-slate-200">
-                    <td className="py-2.5 px-3 font-bold text-sky-300">Model B</td>
+                    <td className="py-2.5 px-3 font-bold text-sky-300">Variant B</td>
                     <td className="py-2.5 px-3 text-slate-300">Graph Neural Net (PinSage)</td>
                     <td className="py-2.5 px-3 text-slate-300">0.412</td>
                     <td className="py-2.5 px-3 text-slate-300">4.10%</td>
@@ -393,7 +393,7 @@ export const DashboardDesignModal: React.FC<DashboardDesignModalProps> = ({
         {/* Footer */}
         <div className="bg-slate-900 px-6 py-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
           <span>
-            Dashboard Specification for <strong>Ecommerce Recommendation model</strong> (Grafana / React Tremor stack)
+            Dashboard Specification for <strong>Ecommerce Recommendation System</strong> (Grafana / React Tremor stack)
           </span>
           <button
             onClick={onClose}

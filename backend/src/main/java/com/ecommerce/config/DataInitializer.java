@@ -5,7 +5,6 @@ import com.ecommerce.repository.*;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
@@ -13,23 +12,14 @@ public class DataInitializer implements CommandLineRunner {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
-    private final CouponRepository couponRepository;
-    private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
-    private final OrderRepository orderRepository;
 
     public DataInitializer(ProductRepository productRepository,
                            CategoryRepository categoryRepository,
-                           CouponRepository couponRepository,
-                           UserRepository userRepository,
-                           ReviewRepository reviewRepository,
-                           OrderRepository orderRepository) {
+                           ReviewRepository reviewRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
-        this.couponRepository = couponRepository;
-        this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
-        this.orderRepository = orderRepository;
     }
 
     @Override
@@ -70,45 +60,9 @@ public class DataInitializer implements CommandLineRunner {
         productRepository.save(p9);
         productRepository.save(p10);
 
-        // 3. Coupons
-        couponRepository.save(new Coupon("WELCOME10", 10.0, 50.0, 30.0, true));
-        couponRepository.save(new Coupon("SAVE20", 20.0, 100.0, 100.0, true));
-        couponRepository.save(new Coupon("SUPER50", 50.0, 200.0, 250.0, true));
-
-        // 4. Sample Users
-        User customer = new User(1L, "Alice Johnson", "alice@example.com", "+1-555-0101", Role.CUSTOMER);
-        customer.getAddresses().add(new Address("123 Market St", "San Francisco", "CA", "94105", "USA"));
-        userRepository.save(customer);
-
-        User admin = new User(2L, "Admin User", "admin@ecommerce.com", "+1-555-0199", Role.ADMIN);
-        admin.getAddresses().add(new Address("100 Tech Blvd", "San Jose", "CA", "95113", "USA"));
-        userRepository.save(admin);
-
-        // 5. Sample Reviews
+        // 3. Sample Reviews
         reviewRepository.save(new Review(1L, 1L, "1", "Alice Johnson", 5, "Incredible camera and battery life. Highly recommend!"));
         reviewRepository.save(new Review(2L, 3L, "1", "Alice Johnson", 5, "Best noise cancellation I have ever experienced. Great comfort."));
         reviewRepository.save(new Review(3L, 5L, "2", "Admin User", 5, "The scroll wheel and ergonomic shape are unmatched."));
-
-        // 6. Sample Initial Order
-        OrderItem item1 = new OrderItem(3L, "Sony WH-1000XM5", 398.00, 1, 398.00, "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500");
-        Order sampleOrder = new Order(
-                1001L,
-                "ORD-SAMPLE-1001",
-                "1",
-                "Alice Johnson",
-                "alice@example.com",
-                "+1-555-0101",
-                new Address("123 Market St", "San Francisco", "CA", "94105", "USA"),
-                List.of(item1),
-                398.00,
-                39.80,
-                0.0,
-                358.20,
-                OrderStatus.DELIVERED,
-                PaymentStatus.PAID,
-                "CREDIT_CARD",
-                "WELCOME10"
-        );
-        orderRepository.save(sampleOrder);
     }
 }

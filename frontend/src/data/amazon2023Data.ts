@@ -149,7 +149,7 @@ export const AMAZON_PRODUCTS: Product[] = [
     coPurchasedAsins: ['B07978J597', 'B08F9V4P3G'],
     similarAsins: ['B09XS7JWHH', 'B0BDHW4P9D'],
     twoTowerEmbeddingSimilarity: 0.94,
-    recReason: 'High affinity in 20-core User Collaborative Graph for Audio enthusiasts',
+    recReason: 'Top choice among Audio enthusiasts and frequent shoppers',
     reviews: [
       {
         id: 'rev-301',
@@ -200,7 +200,7 @@ export const AMAZON_PRODUCTS: Product[] = [
     coPurchasedAsins: ['B0B147R5V9', 'B07978J597'],
     similarAsins: ['B098K4J23N'],
     twoTowerEmbeddingSimilarity: 0.91,
-    recReason: 'Item-to-Item Collaborative Filter: 78% of MacBook/PC power users acquire this',
+    recReason: 'Frequently bought together: 78% of MacBook/PC users add this',
     reviews: [
       {
         id: 'rev-401',

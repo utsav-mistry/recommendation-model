@@ -2,8 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Search, 
   ShoppingCart, 
-  Heart, 
-  SlidersHorizontal, 
   ChevronDown, 
   Cpu, 
   LayoutDashboard, 
@@ -23,10 +21,6 @@ interface HeaderProps {
   onSelectUser: (user: UserProfile) => void;
   cartItems: CartItem[];
   onOpenCart: () => void;
-  wishlistCount: number;
-  onOpenWishlist: () => void;
-  compareCount: number;
-  onOpenCompare: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
   selectedCategory: string;
@@ -42,10 +36,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectUser,
   cartItems,
   onOpenCart,
-  wishlistCount,
-  onOpenWishlist,
-  compareCount,
-  onOpenCompare,
   searchQuery,
   onSearchChange,
   selectedCategory,
@@ -175,7 +165,7 @@ export const Header: React.FC<HeaderProps> = ({
             Exclusive<span className="text-[#db4444]">.</span>
           </span>
           <span className="hidden xl:inline text-[10px] font-mono bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded font-semibold border border-neutral-200">
-            20-Core Model
+            Curated Picks
           </span>
         </div>
 
@@ -334,34 +324,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Action Icons Cluster */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            {/* Compare Specs Button */}
-            {compareCount > 0 && (
-              <button
-                onClick={onOpenCompare}
-                className="relative p-2 text-gray-800 hover:text-black transition cursor-pointer rounded-full hover:bg-gray-100"
-                title="Compare Specifications"
-              >
-                <SlidersHorizontal className="w-5 h-5 text-[#db4444]" />
-                <span className="absolute top-0 right-0 bg-[#db4444] text-white font-bold text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                  {compareCount}
-                </span>
-              </button>
-            )}
-
-            {/* Wishlist Heart Icon */}
-            <button
-              onClick={onOpenWishlist}
-              className="relative p-2 text-gray-800 hover:text-black transition cursor-pointer rounded-full hover:bg-gray-100"
-              title="Wishlist"
-            >
-              <Heart className={`w-5 h-5 ${wishlistCount > 0 ? 'text-[#db4444] fill-[#db4444]' : 'text-gray-800'}`} />
-              {wishlistCount > 0 && (
-                <span className="absolute top-0 right-0 bg-[#db4444] text-white font-bold text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                  {wishlistCount}
-                </span>
-              )}
-            </button>
-
             {/* Cart Icon */}
             <button
               onClick={onOpenCart}
@@ -436,7 +398,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
 
                   <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
-                    <span className="text-gray-400">Two-Tower Vector Engine</span>
+                    <span className="text-gray-400">Personalized Recommendations</span>
                     <button
                       onClick={() => {
                         setShowUserDropdown(false);
