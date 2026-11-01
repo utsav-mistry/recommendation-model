@@ -17,13 +17,13 @@ DB_PATH = _path_from_env("RECOMMENDATION_DB_PATH", "amazon_full.duckdb")
 SQLITE_PATH = _path_from_env("APPLICATION_SQLITE_PATH", "application.sqlite3")
 RANKINGS_PATH = _path_from_env(
     "RECOMMENDATION_RANKINGS_PATH",
-    "experiments/global_rankings_clean.parquet",
+    "recommendation_model/artifacts/global_rankings.parquet",
 )
 GRAPH_PATH = _path_from_env(
     "RECOMMENDATION_GRAPH_PATH",
-    "experiments/electronics_train_item_neighbors.npz",
+    "recommendation_model/artifacts/item_neighbors.npz",
 )
 ITEM_IDS_PATH = _path_from_env(
     "RECOMMENDATION_ITEM_IDS_PATH",
-    "experiments/electronics_train_item_ids.npy",
+    "recommendation_model/artifacts/item_ids.npy",
 )

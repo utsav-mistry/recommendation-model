@@ -111,6 +111,27 @@ export const apiService = {
     return response.items;
   },
 
+  async getPersonalizedRecommendations(token: string, limit = 8): Promise<{
+    items: FastApiProduct[];
+    personalized: boolean;
+    has_history: boolean;
+  }> {
+    return fastApiRequest<{
+      items: FastApiProduct[];
+      personalized: boolean;
+      has_history: boolean;
+    }>(`/recommendations/personalized?limit=${limit}`, undefined, token);
+  },
+
+    async getRecentlyViewed(token: string, limit = 8): Promise<FastApiProduct[]> {
+      const response = await fastApiRequest<{ items: FastApiProduct[] }>(
+        `/history/products?limit=${limit}`,
+        undefined,
+        token
+      );
+      return response.items;
+    },
+
   async getWishlist(token: string): Promise<UserProductList> {
     return fastApiRequest<UserProductList>('/wishlist', undefined, token);
   },

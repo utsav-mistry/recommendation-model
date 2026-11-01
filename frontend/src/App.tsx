@@ -48,6 +48,11 @@ export default function App() {
   const [similarRecommendations, setSimilarRecommendations] = useState<Product[]>([]);
   const [cartRecommendations, setCartRecommendations] = useState<Product[]>([]);
   const [wishlistRecommendations, setWishlistRecommendations] = useState<Product[]>([]);
+  const [personalizedRecommendations, setPersonalizedRecommendations] = useState<Product[]>([]);
+  const [recentlyViewedProducts, setRecentlyViewedProducts] = useState<Product[]>([]);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const [hasPersonalizationHistory, setHasPersonalizationHistory] = useState(false);
+  const [personalizationVersion, setPersonalizationVersion] = useState(0);
   const [categories, setCategories] = useState<Array<{ name: string; label: string; product_count: number }>>([]);
 
   useEffect(() => {
@@ -79,6 +84,7 @@ export default function App() {
     if (!authToken || !authUser) {
       setCartItems([]);
       setWishlistAsins(new Set());
+      setRecentlyViewedProducts([]);
       return;
     }
     Promise.all([
@@ -95,7 +101,10 @@ export default function App() {
       .catch((error) => {
         setDataError(error instanceof Error ? error.message : 'Unable to load your saved items');
       });
-  }, [authToken, authUser]);
+    apiService.getRecentlyViewed(authToken)
+      .then((items) => setRecentlyViewedProducts(items.map(mapFastApiProductToFrontend)))
+      .catch(() => setRecentlyViewedProducts([]));
+  }, [authToken, authUser, historyVersion]);
 
   useEffect(() => {
     if (!authUser) return;
@@ -118,18 +127,23 @@ export default function App() {
       setAllProducts([]);
       setDataError(error instanceof Error ? error.message : 'Unable to load products');
     });
-    if (searchQuery.trim()) {
-      void apiService.recordEvent(
-        { event_type: 'search', search_query: searchQuery.trim() },
-        authToken as string
-      ).catch((error) => setDataError(error instanceof Error ? error.message : 'Unable to record search activity'));
-    } else if (selectedCategory !== 'All Departments') {
+    if (selectedCategory !== 'All Departments' && !searchQuery.trim()) {
       void apiService.recordEvent(
         { event_type: 'category_view', category: selectedCategory },
         authToken as string
       ).catch((error) => setDataError(error instanceof Error ? error.message : 'Unable to record category activity'));
     }
   }, [authUser, searchQuery, selectedCategory, page, minPrice, maxPrice, minRating, storeFilter, sortBy]);
+
+  const handleSearchSubmit = (query: string) => {
+    const normalized = query.trim();
+    if (!normalized || !authToken) return;
+    void apiService.recordEvent(
+      { event_type: 'search', search_query: normalized },
+      authToken
+    ).then(() => setPersonalizationVersion((version) => version + 1))
+      .catch((error) => setDataError(error instanceof Error ? error.message : 'Unable to record search activity'));
+  };
 
   useEffect(() => {
     setPage(1);
@@ -156,6 +170,23 @@ export default function App() {
       .catch(() => setCategoryRecommendations([]));
   }, [authUser, selectedCategory, globalRecommendations]);
 
+  useEffect(() => {
+    if (!authUser || !authToken) {
+      setPersonalizedRecommendations([]);
+      setHasPersonalizationHistory(false);
+      return;
+    }
+    apiService.getPersonalizedRecommendations(authToken, 8)
+      .then((response) => {
+        setPersonalizedRecommendations(response.items.map(mapFastApiProductToFrontend));
+        setHasPersonalizationHistory(response.has_history);
+      })
+      .catch(() => {
+        setPersonalizedRecommendations([]);
+        setHasPersonalizationHistory(false);
+      });
+  }, [authUser, authToken, orders, personalizationVersion]);
+
   const selectedAsin = selectedProduct?.asin;
 
   useEffect(() => {
@@ -170,7 +201,8 @@ export default function App() {
     void apiService.recordEvent(
       { event_type: 'product_view', parent_asin: selectedAsin },
       authToken as string
-    ).catch((error) => setDataError(error instanceof Error ? error.message : 'Unable to record product activity'));
+    ).then(() => setHistoryVersion((version) => version + 1))
+      .catch((error) => setDataError(error instanceof Error ? error.message : 'Unable to record product activity'));
     apiService.getSimilarRecommendations([selectedAsin], 6)
       .then((items) => setSimilarRecommendations(items.map(mapFastApiProductToFrontend)))
       .catch(() => setSimilarRecommendations([]));
@@ -283,8 +315,8 @@ export default function App() {
 
   // Specialized recommendation rails
   const personalizedRail = useMemo(() => {
-    return categoryRecommendations.length ? categoryRecommendations : globalRecommendations;
-  }, [categoryRecommendations, globalRecommendations]);
+    return personalizedRecommendations;
+  }, [personalizedRecommendations]);
 
   const bestSellingRail = useMemo(() => {
     return globalRecommendations;
@@ -370,6 +402,7 @@ export default function App() {
         }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        onSearchSubmit={handleSearchSubmit}
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
         products={allProducts}
@@ -408,18 +441,42 @@ export default function App() {
                 }}
               />
 
+              {recentlyViewedProducts.length > 0 && (
+                <RecommendationRail
+                  title="Recently Viewed"
+                  subtitle="Your history"
+                  products={recentlyViewedProducts}
+                  onSelectProduct={setSelectedProduct}
+                  onAddToCart={(p, e) => {
+                    e.stopPropagation();
+                    handleAddToCart(p);
+                  }}
+                />
+              )}
+
               {/* Recommendation Rail 2: Recommended For You */}
-              <RecommendationRail
-                title="Recommended For You"
-                subtitle="Our Products"
-                algorithmBadge="Trained recommendation model"
-                products={personalizedRail}
-                onSelectProduct={setSelectedProduct}
-                onAddToCart={(p, e) => {
-                  e.stopPropagation();
-                  handleAddToCart(p);
-                }}
-              />
+              {personalizedRail.length > 0 ? (
+                <RecommendationRail
+                  title="Recommended For You"
+                  subtitle="Based on your activity"
+                  algorithmBadge="Personalized"
+                  products={personalizedRail}
+                  onSelectProduct={setSelectedProduct}
+                  onAddToCart={(p, e) => {
+                    e.stopPropagation();
+                    handleAddToCart(p);
+                  }}
+                />
+              ) : (
+                <section className="rounded-md border border-gray-200 bg-white p-8 text-center">
+                  <h3 className="text-xl font-bold text-gray-900">Recommended For You</h3>
+                  <p className="mt-2 text-sm text-gray-500">
+                    {hasPersonalizationHistory
+                      ? 'We are still building recommendations from your activity.'
+                      : 'Search, view products, or complete a purchase to get personalized recommendations.'}
+                  </p>
+                </section>
+              )}
 
               {/* Complete Catalog Section */}
               <section className="space-y-6 pt-4">

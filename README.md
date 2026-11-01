@@ -41,9 +41,9 @@ The defaults resolve relative to the repository root:
 ```text
 RECOMMENDATION_DB_PATH=amazon_full.duckdb
 APPLICATION_SQLITE_PATH=application.sqlite3
-RECOMMENDATION_RANKINGS_PATH=experiments/global_rankings_clean.parquet
-RECOMMENDATION_GRAPH_PATH=experiments/electronics_train_item_neighbors.npz
-RECOMMENDATION_ITEM_IDS_PATH=experiments/electronics_train_item_ids.npy
+RECOMMENDATION_RANKINGS_PATH=recommendation_model/artifacts/global_rankings.parquet
+RECOMMENDATION_GRAPH_PATH=recommendation_model/artifacts/item_neighbors.npz
+RECOMMENDATION_ITEM_IDS_PATH=recommendation_model/artifacts/item_ids.npy
 AUTH_TOKEN_SECRET=change-this-in-production
 ```
 
@@ -58,8 +58,10 @@ Health checks:
   accessible.
 
 The FastAPI application boundary is `backend/`. The
-`recommendation_service/` package contains only catalogue and recommendation
-engine logic consumed by that application. The React frontend uses
+`recommendation_model/` package owns the production catalogue and
+recommendation engine, including its validated runtime artifacts. The
+`experiments/` directory is reference-only and is not part of the application
+runtime. The React frontend uses
 `VITE_FASTAPI_API_URL`, defaulting to
 `http://localhost:8000`. Spring Boot source remains in the repository for
 future integration but is not required to run the current application.

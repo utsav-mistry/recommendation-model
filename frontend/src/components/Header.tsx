@@ -20,6 +20,7 @@ interface HeaderProps {
   onLogout: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  onSearchSubmit?: (q: string) => void;
   selectedCategory: string;
   onCategoryChange: (cat: string) => void;
   products?: Product[];
@@ -35,6 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   searchQuery,
   onSearchChange,
+  onSearchSubmit,
   selectedCategory,
   onCategoryChange,
   products = [],
@@ -81,6 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (selectedCategory !== 'All Departments') {
       onCategoryChange('All Departments');
     }
+    onSearchSubmit?.(searchQuery);
   };
 
   const handleSelectSuggestion = (product: Product) => {

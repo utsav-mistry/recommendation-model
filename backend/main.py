@@ -15,7 +15,7 @@ from .database import SQLiteDatabase
 from .user_data import UserDataService
 from .activity import ActivityService
 from .orders import OrderService
-from recommendation_service.service import RecommendationService
+from recommendation_model.service import RecommendationService
 
 
 service: RecommendationService | None = None
@@ -318,6 +318,32 @@ def record_event(request: EventRequest, user: dict = Depends(authenticated_user)
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/recommendations/personalized")
+def personalized_recommendations(
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+    user: dict = Depends(authenticated_user),
+) -> dict:
+    context = get_user_data_service().recommendation_context(user_id(user))
+    result = get_service().personalized(
+        context["purchased_asins"],
+        context["events"],
+        limit,
+    )
+    return {
+        "items": result,
+        "personalized": bool(context["purchased_asins"] or context["events"]),
+        "has_history": bool(context["purchased_asins"] or context["events"]),
+    }
+
+
+@app.get("/api/history/products")
+def recently_viewed_products(
+    limit: Annotated[int, Query(ge=1, le=50)] = 8,
+    user: dict = Depends(authenticated_user),
+) -> dict:
+    return {"items": get_user_data_service().recently_viewed(user_id(user), limit)}
 
 
 @app.get("/api/events")

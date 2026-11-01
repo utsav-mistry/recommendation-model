@@ -67,6 +67,55 @@ class UserDataService:
             ).fetchall()
         return self._enriched_items(rows, "cart")
 
+    def recommendation_context(self, user_id: int) -> dict[str, Any]:
+        with self.database.connection() as connection:
+            purchases = connection.execute(
+                """
+                SELECT DISTINCT oi.parent_asin
+                FROM order_items oi
+                JOIN orders o ON o.id = oi.order_id
+                WHERE o.user_id = ? AND o.order_status = 'simulated_completed'
+                """,
+                [user_id],
+            ).fetchall()
+            events = connection.execute(
+                """
+                SELECT event_type, parent_asin, search_query, category, metadata, created_at
+                FROM user_events
+                WHERE user_id = ?
+                  AND event_type IN ('search', 'category_view', 'product_view')
+                ORDER BY created_at DESC, id DESC
+                LIMIT 200
+                """,
+                [user_id],
+            ).fetchall()
+        return {
+            "purchased_asins": [str(row["parent_asin"]) for row in purchases],
+            "events": [dict(row) for row in events],
+        }
+
+    def recently_viewed(self, user_id: int, limit: int = 8) -> list[dict[str, Any]]:
+        with self.database.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT parent_asin
+                FROM user_events
+                WHERE user_id = ? AND event_type = 'product_view'
+                  AND parent_asin IS NOT NULL
+                GROUP BY parent_asin
+                ORDER BY MAX(created_at) DESC, MAX(id) DESC
+                LIMIT ?
+                """,
+                [user_id, limit],
+            ).fetchall()
+        return [
+            product
+            for product in (
+                self.catalogue.product(str(row["parent_asin"])) for row in rows
+            )
+            if product is not None
+        ]
+
     def add_cart(self, user_id: int, parent_asin: str, quantity: int) -> dict[str, Any]:
         self._validate_quantity(quantity)
         product = self._product(parent_asin)
