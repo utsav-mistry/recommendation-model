@@ -17,7 +17,7 @@ export interface Product {
   asin: string;
   title: string;
   brand: string;
-  category: 'Electronics' | 'Computers & Accessories' | 'Smart Home' | 'Audio & Headphones' | 'Cameras' | 'Wearables';
+  category: string;
   price: number;
   originalPrice?: number;
   rating: number;

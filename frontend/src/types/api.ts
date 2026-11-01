@@ -27,6 +27,7 @@ export interface BackendCategory {
 
 export interface BackendProduct {
   id: number;
+  parentAsin?: string;
   name: string;
   description: string;
   price: number;
@@ -38,6 +39,38 @@ export interface BackendProduct {
   tags?: string[];
   createdAt?: string;
   active?: boolean;
+}
+
+export interface FastApiProduct {
+  parent_asin: string;
+  title: string;
+  category: string;
+  price: number | null;
+  rating: number;
+  review_count: number;
+  images: string[];
+  features: string[];
+  description: string[];
+  brand?: string | null;
+  store?: string | null;
+  recommendation_score?: number;
+}
+
+export interface ProductPage {
+  items: FastApiProduct[];
+  page: number;
+  page_size: number;
+  total: number;
+}
+
+export interface AuthUser {
+  email: string;
+  display_name: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: AuthUser;
 }
 
 export interface BackendCartItem {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Product, UserProfile } from '../types/ecommerce';
+import { Product } from '../types/ecommerce';
 import { ProductCard } from './ProductCard';
 import { 
   Smartphone, 
@@ -12,17 +12,18 @@ import {
 
 interface CategoryCardsGridProps {
   products: Product[];
-  activeUser: UserProfile;
   onSelectProduct: (product: Product) => void;
   onSelectCategory: (category: string) => void;
   onAddToCart: (product: Product, e: React.MouseEvent) => void;
+  categories: Array<{ name: string; label: string; product_count: number }>;
 }
 
 export const CategoryCardsGrid: React.FC<CategoryCardsGridProps> = ({
   products,
   onSelectProduct,
   onSelectCategory,
-  onAddToCart
+  onAddToCart,
+  categories
 }) => {
   // Flash Sales Countdown Timer
   const [timeLeft, setTimeLeft] = useState({
@@ -48,14 +49,12 @@ export const CategoryCardsGrid: React.FC<CategoryCardsGridProps> = ({
 
   const flashSaleProducts = products.filter((p) => p.originalPrice).slice(0, 4);
 
-  const categoryBoxes = [
-    { name: 'Phones', icon: Smartphone, targetCategory: 'Electronics' },
-    { name: 'Computers', icon: Monitor, targetCategory: 'Computers & Accessories' },
-    { name: 'SmartWatch', icon: Watch, targetCategory: 'Wearables' },
-    { name: 'Camera', icon: Camera, targetCategory: 'Cameras' },
-    { name: 'Headphones', icon: Headphones, targetCategory: 'Audio & Headphones' },
-    { name: 'Smart Living', icon: Gamepad2, targetCategory: 'Smart Home' }
-  ];
+  const icons = [Smartphone, Monitor, Watch, Camera, Headphones, Gamepad2];
+  const categoryBoxes = categories.slice(0, 6).map((category, index) => ({
+    name: category.label,
+    icon: icons[index % icons.length],
+    targetCategory: category.name
+  }));
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 space-y-16 py-8">

@@ -63,6 +63,7 @@ export interface Category {
 
 export interface Product {
   id: number;
+  parentAsin?: string;
   name: string;
   description: string;
   price: number;

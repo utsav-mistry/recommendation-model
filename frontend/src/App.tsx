@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Product, CartItem, UserProfile, RecEngineMode } from './types/ecommerce';
-import { AMAZON_PRODUCTS } from './data/amazon2023Data';
-import { USER_PROFILES } from './data/userProfiles';
-import { apiService, mapBackendProductToFrontend } from './services/apiService';
+import { Product, CartItem } from './types/ecommerce';
+import { apiService, mapFastApiProductToFrontend } from './services/apiService';
+import { AuthUser } from './types/api';
+import { AuthPage } from './components/AuthPage';
 import { Header } from './components/Header';
 import { SubNavbar } from './components/SubNavbar';
 import { CategoryCardsGrid } from './components/CategoryCardsGrid';
@@ -10,60 +10,126 @@ import { RecommendationRail } from './components/RecommendationRail';
 import { ProductCard } from './components/ProductCard';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { CartDrawer } from './components/CartDrawer';
-import { ArchitectureModal } from './components/ArchitectureModal';
-import { DashboardDesignModal } from './components/DashboardDesignModal';
 import { Footer } from './components/Footer';
 import { Check } from 'lucide-react';
 
 export default function App() {
-  const [activeUser, setActiveUser] = useState<UserProfile>(USER_PROFILES[0]);
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      product: AMAZON_PRODUCTS[0], // Sony XM5
-      quantity: 1
-    }
-  ]);
+  const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem('recommendation_auth_token'));
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Departments');
-  const [recEngineMode, setRecEngineMode] = useState<RecEngineMode>('two-tower');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isArchitectureOpen, setIsArchitectureOpen] = useState(false);
-  const [isDashboardDesignOpen, setIsDashboardDesignOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Sorting and filtering
   const [sortBy, setSortBy] = useState<'featured' | 'price-low' | 'price-high' | 'rating'>('featured');
   const [primeOnly, setPrimeOnly] = useState(false);
 
-  // Dynamic products loaded from backend with fallback
-  const [allProducts, setAllProducts] = useState<Product[]>(AMAZON_PRODUCTS);
-  const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [globalRecommendations, setGlobalRecommendations] = useState<Product[]>([]);
+  const [categoryRecommendations, setCategoryRecommendations] = useState<Product[]>([]);
+  const [similarRecommendations, setSimilarRecommendations] = useState<Product[]>([]);
+  const [cartRecommendations, setCartRecommendations] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Array<{ name: string; label: string; product_count: number }>>([]);
 
   useEffect(() => {
-    async function loadBackendData() {
-      try {
-        const isHealthy = await apiService.checkHealth();
-        setIsBackendConnected(isHealthy);
-        if (isHealthy) {
-          const backendItems = await apiService.getProducts();
-          if (backendItems && backendItems.length > 0) {
-            const mapped = backendItems.map(mapBackendProductToFrontend);
-            setAllProducts((prev) => {
-              const titles = new Set(prev.map((p) => p.title.toLowerCase()));
-              const newItems = mapped.filter((m) => !titles.has(m.title.toLowerCase()));
-              return [...mapped, ...newItems];
-            });
-            triggerToast('Connected to recommendation backend (:8000)');
-          }
-        }
-      } catch {
-        setIsBackendConnected(false);
-      }
+    if (!authToken) {
+      setAuthUser(null);
+      setAuthReady(true);
+      return;
     }
-    loadBackendData();
-  }, []);
+    apiService.getCurrentUser(authToken)
+      .then(setAuthUser)
+      .catch(() => {
+        localStorage.removeItem('recommendation_auth_token');
+        setAuthToken(null);
+        setAuthUser(null);
+      })
+      .finally(() => setAuthReady(true));
+  }, [authToken]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    async function loadCatalogue() {
+      const catalog = await apiService.getProducts({
+        page: 1,
+        pageSize: 48,
+        search: searchQuery || undefined,
+        category: selectedCategory
+      });
+      setAllProducts(catalog.items.map(mapFastApiProductToFrontend));
+    }
+    loadCatalogue().catch(() => setAllProducts([]));
+  }, [authUser, searchQuery, selectedCategory]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    apiService.getGlobalRecommendations(8)
+      .then((items) => setGlobalRecommendations(items.map(mapFastApiProductToFrontend)))
+      .catch(() => setGlobalRecommendations([]));
+    apiService.getCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, [authUser]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    if (selectedCategory === 'All Departments') {
+      setCategoryRecommendations(globalRecommendations);
+      return;
+    }
+    apiService.getCategoryRecommendations(selectedCategory, 8)
+      .then((items) => setCategoryRecommendations(items.map(mapFastApiProductToFrontend)))
+      .catch(() => setCategoryRecommendations([]));
+  }, [authUser, selectedCategory, globalRecommendations]);
+
+  const selectedAsin = selectedProduct?.asin;
+
+  useEffect(() => {
+    if (!authUser) return;
+    if (!selectedAsin) {
+      setSimilarRecommendations([]);
+      return;
+    }
+    apiService.getProductById(selectedAsin)
+      .then((item) => setSelectedProduct(mapFastApiProductToFrontend(item)))
+      .catch(() => undefined);
+    apiService.getSimilarRecommendations([selectedAsin], 6)
+      .then((items) => setSimilarRecommendations(items.map(mapFastApiProductToFrontend)))
+      .catch(() => setSimilarRecommendations([]));
+  }, [authUser, selectedAsin]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    const cartAsins = cartItems.map((item) => item.product.asin);
+    if (!cartAsins.length) {
+      setCartRecommendations([]);
+      return;
+    }
+    apiService.getSimilarRecommendations(cartAsins, 6)
+      .then((items) => setCartRecommendations(items.map(mapFastApiProductToFrontend)))
+      .catch(() => setCartRecommendations([]));
+  }, [authUser, cartItems]);
+
+  if (!authReady) {
+    return <div className="min-h-screen bg-white" />;
+  }
+
+  if (!authToken || !authUser) {
+    return (
+      <AuthPage
+        onAuthenticated={(token, user) => {
+          localStorage.setItem('recommendation_auth_token', token);
+          setAuthToken(token);
+          setAuthUser(user);
+        }}
+      />
+    );
+  }
 
   // Helper to show toasts
   const triggerToast = (msg: string) => {
@@ -107,28 +173,12 @@ export default function App() {
     return [...allProducts].map((product) => {
       let score = product.twoTowerEmbeddingSimilarity || 0.85;
 
-      // Persona affinity bonus
-      if (product.category === activeUser.recommendedCategory) {
-        score += 0.08;
-      } else if (activeUser.recentCategories.includes(product.category)) {
-        score += 0.04;
-      }
-
-      // Mode adjustments
-      if (recEngineMode === 'collaborative-filtering') {
-        score = (product.kCoreInteractionCount / 890) * 0.95;
-      } else if (recEngineMode === 'popular-baseline') {
-        score = (product.reviewCount / 50000) * (product.rating / 5);
-      } else if (recEngineMode === 'hybrid-graph') {
-        score = 0.6 * score + 0.4 * (product.kCoreInteractionCount / 890);
-      }
-
       return {
         ...product,
         dynamicScore: Math.min(score, 0.99)
       };
     }).sort((a, b) => b.dynamicScore - a.dynamicScore);
-  }, [allProducts, activeUser, recEngineMode]);
+  }, [allProducts]);
 
   // Filtered catalog for main product grid
   const filteredProducts = useMemo(() => {
@@ -168,14 +218,12 @@ export default function App() {
 
   // Specialized recommendation rails
   const personalizedRail = useMemo(() => {
-    return rankedProducts.slice(0, 8);
-  }, [rankedProducts]);
+    return categoryRecommendations.length ? categoryRecommendations : globalRecommendations;
+  }, [categoryRecommendations, globalRecommendations]);
 
   const bestSellingRail = useMemo(() => {
-    return [...rankedProducts]
-      .sort((a, b) => b.kCoreInteractionCount - a.kCoreInteractionCount)
-      .slice(0, 8);
-  }, [rankedProducts]);
+    return globalRecommendations;
+  }, [globalRecommendations]);
 
   const isBrowsingAll = selectedCategory === 'All Departments' && !searchQuery.trim();
 
@@ -199,49 +247,28 @@ export default function App() {
 
       {/* Header */}
       <Header
-        activeUser={activeUser}
-        onSelectUser={setActiveUser}
         cartItems={cartItems}
         onOpenCart={() => setIsCartOpen(true)}
+        user={authUser}
+        onLogout={() => {
+          localStorage.removeItem('recommendation_auth_token');
+          setAuthToken(null);
+          setAuthUser(null);
+          setCartItems([]);
+        }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
-        onOpenArchitecture={() => setIsArchitectureOpen(true)}
-        onOpenDashboardDesign={() => setIsDashboardDesignOpen(true)}
         products={allProducts}
         onSelectProduct={setSelectedProduct}
       />
-
-      {/* Backend API Status Banner */}
-      {isBackendConnected !== null && (
-        <div className={`px-4 py-1.5 text-xs flex items-center justify-between border-b transition-colors ${
-          isBackendConnected
-            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-            : 'bg-amber-50 text-amber-800 border-amber-200'
-        }`}>
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            <span className="font-semibold">
-              {isBackendConnected ? 'FastAPI Recommendation API: Connected (:8000)' : 'Backend API: Offline Fallback Active'}
-            </span>
-            <span className="text-gray-500 text-[11px] hidden sm:inline">
-              ({isBackendConnected ? 'Loaded catalog items from recommendation backend' : 'Using in-browser offline simulation'})
-            </span>
-          </div>
-          <span className="text-[11px] font-mono text-gray-600">
-            FastAPI Service (:8000)
-          </span>
-        </div>
-      )}
 
       {/* SubNavbar with Category Pills & Rec Engine Selector */}
       <SubNavbar
         selectedCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
-        recMode={recEngineMode}
-        onSelectRecMode={setRecEngineMode}
-        onOpenArchitecture={() => setIsArchitectureOpen(true)}
+        categories={categories}
       />
 
       {/* Main Body */}
@@ -251,9 +278,9 @@ export default function App() {
             {/* Category Grid & Flash Products */}
             <CategoryCardsGrid
               products={rankedProducts}
-              activeUser={activeUser}
               onSelectProduct={setSelectedProduct}
               onSelectCategory={setSelectedCategory}
+              categories={categories}
               onAddToCart={(p, e) => {
                 e.stopPropagation();
                 handleAddToCart(p);
@@ -277,17 +304,9 @@ export default function App() {
 
               {/* Recommendation Rail 2: Recommended For You */}
               <RecommendationRail
-                title={`Recommended For You (${activeUser.name.split(' ')[0]})`}
+                title="Recommended For You"
                 subtitle="Our Products"
-                algorithmBadge={
-                  recEngineMode === 'two-tower'
-                    ? 'Personalized Match'
-                    : recEngineMode === 'collaborative-filtering'
-                    ? 'Community Pick'
-                    : recEngineMode === 'hybrid-graph'
-                    ? 'Trending Discovery'
-                    : 'Top Rated'
-                }
+                algorithmBadge="Trained recommendation model"
                 products={personalizedRail}
                 onSelectProduct={setSelectedProduct}
                 onAddToCart={(p, e) => {
@@ -451,6 +470,7 @@ export default function App() {
         onClose={() => setSelectedProduct(null)}
         onAddToCart={handleAddToCart}
         onSelectProduct={setSelectedProduct}
+        similarProducts={similarRecommendations}
       />
 
       {/* Cart Drawer - Kept for User's Basket & Association Exploration */}
@@ -463,33 +483,10 @@ export default function App() {
         onSelectProduct={setSelectedProduct}
         onAddToCart={handleAddToCart}
         onClearCart={() => setCartItems([])}
+        recommendationProducts={cartRecommendations}
       />
 
-      {/* Architecture Specs Modal */}
-      <ArchitectureModal
-        isOpen={isArchitectureOpen}
-        onClose={() => setIsArchitectureOpen(false)}
-        onOpenDashboardDesign={() => {
-          setIsArchitectureOpen(false);
-          setIsDashboardDesignOpen(true);
-        }}
-      />
-
-      {/* Dashboard Design Mockup Modal */}
-      <DashboardDesignModal
-        isOpen={isDashboardDesignOpen}
-        onClose={() => setIsDashboardDesignOpen(false)}
-        onOpenArchitecture={() => {
-          setIsDashboardDesignOpen(false);
-          setIsArchitectureOpen(true);
-        }}
-      />
-
-      {/* Modern Footer */}
-      <Footer
-        onOpenArchitecture={() => setIsArchitectureOpen(true)}
-        onOpenDashboardDesign={() => setIsDashboardDesignOpen(true)}
-      />
+      <Footer />
     </div>
   );
 }

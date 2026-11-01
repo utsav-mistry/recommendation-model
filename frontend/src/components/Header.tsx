@@ -3,60 +3,41 @@ import {
   Search, 
   ShoppingCart, 
   ChevronDown, 
-  Cpu, 
-  LayoutDashboard, 
-  CheckCircle2, 
-  Sparkles, 
-  User, 
   ArrowRight,
   X,
-  TrendingUp,
-  Tag
+  TrendingUp
 } from 'lucide-react';
-import { UserProfile, CartItem, Product } from '../types/ecommerce';
-import { USER_PROFILES } from '../data/userProfiles';
+import { CartItem, Product } from '../types/ecommerce';
+import { AuthUser } from '../types/api';
 
 interface HeaderProps {
-  activeUser: UserProfile;
-  onSelectUser: (user: UserProfile) => void;
   cartItems: CartItem[];
   onOpenCart: () => void;
+  user: AuthUser;
+  onLogout: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
   selectedCategory: string;
   onCategoryChange: (cat: string) => void;
-  onOpenArchitecture: () => void;
-  onOpenDashboardDesign: () => void;
   products?: Product[];
   onSelectProduct?: (product: Product) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  activeUser,
-  onSelectUser,
   cartItems,
   onOpenCart,
+  user,
+  onLogout,
   searchQuery,
   onSearchChange,
   selectedCategory,
   onCategoryChange,
-  onOpenArchitecture,
-  onOpenDashboardDesign,
   products = [],
   onSelectProduct
 }) => {
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
-
-  const navLinks = [
-    { name: 'Home', category: 'All Departments' },
-    { name: 'Electronics', category: 'Electronics' },
-    { name: 'Audio', category: 'Audio & Headphones' },
-    { name: 'Computers', category: 'Computers & Accessories' },
-    { name: 'Smart Home', category: 'Smart Home' }
-  ];
 
   const popularSearches = [
     'Sony XM5',
@@ -121,32 +102,16 @@ export const Header: React.FC<HeaderProps> = ({
               Summer Sale For All Electronics &amp; Free Express Delivery - OFF 50%!
             </span>
             <button
-              onClick={() => onCategoryChange('Electronics')}
+              onClick={() => onCategoryChange('All Departments')}
               className="font-bold underline text-white hover:text-amber-300 ml-1 cursor-pointer"
             >
               ShopNow
             </button>
           </div>
 
-          <div className="hidden sm:flex items-center gap-4">
-            <button
-              onClick={onOpenArchitecture}
-              className="flex items-center gap-1 text-amber-400 hover:text-amber-300 font-medium transition cursor-pointer"
-            >
-              <Cpu className="w-3.5 h-3.5" />
-              <span>Architecture Specs</span>
-            </button>
-            <button
-              onClick={onOpenDashboardDesign}
-              className="flex items-center gap-1 text-sky-400 hover:text-sky-300 font-medium transition cursor-pointer"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>Suggested Dashboard</span>
-            </button>
-            <div className="flex items-center gap-1 text-gray-300 cursor-pointer">
-              <span>English</span>
-              <ChevronDown className="w-3 h-3" />
-            </div>
+          <div className="hidden sm:flex items-center gap-1 text-gray-300">
+            <span>English</span>
+            <ChevronDown className="w-3 h-3" />
           </div>
         </div>
       </div>
@@ -171,25 +136,15 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Center Navigation Links */}
         <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-sm font-medium text-black">
-          {navLinks.map((link) => {
-            const isActive = selectedCategory === link.category;
-            return (
-              <button
-                key={link.name}
-                onClick={() => {
-                  onCategoryChange(link.category);
-                }}
-                className={`relative py-1 transition cursor-pointer ${
-                  isActive ? 'text-[#db4444] font-bold' : 'hover:text-[#db4444]'
-                }`}
-              >
-                <span>{link.name}</span>
-                {isActive && (
-                  <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#db4444] rounded-full" />
-                )}
-              </button>
-            );
-          })}
+          <button
+            onClick={() => {
+              onCategoryChange('All Departments');
+              onSearchChange('');
+            }}
+            className="relative py-1 text-[#db4444] font-bold cursor-pointer"
+          >
+            Home
+          </button>
         </nav>
 
         {/* Right Section: Interactive Search Bar & Action Icons */}
@@ -324,6 +279,12 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Action Icons Cluster */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="hidden lg:flex items-center gap-2 text-xs text-gray-600">
+              <span className="max-w-32 truncate">{user.display_name}</span>
+              <button onClick={onLogout} className="font-semibold text-gray-900 hover:text-[#db4444]">
+                Sign out
+              </button>
+            </div>
             {/* Cart Icon */}
             <button
               onClick={onOpenCart}
@@ -338,80 +299,6 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
-            {/* User Persona Switcher */}
-            <div className="relative">
-              <button
-                onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="p-1.5 rounded-full hover:bg-gray-100 transition cursor-pointer flex items-center gap-1"
-                title="Switch User Persona"
-              >
-                <img
-                  src={activeUser.avatar}
-                  alt={activeUser.name}
-                  className="w-7 h-7 rounded-full object-cover border border-gray-300"
-                />
-                <ChevronDown className="w-3 h-3 text-gray-600 hidden sm:block" />
-              </button>
-
-              {/* Persona Dropdown */}
-              {showUserDropdown && (
-                <div 
-                  className="absolute right-0 mt-2 w-72 bg-white text-gray-800 rounded-lg shadow-xl border border-gray-200 p-3 z-50 animate-in fade-in duration-150"
-                  onMouseLeave={() => setShowUserDropdown(false)}
-                >
-                  <div className="border-b border-gray-100 pb-2 mb-2">
-                    <span className="text-[11px] font-bold text-[#db4444] uppercase tracking-wider block">
-                      Active Persona: {activeUser.name}
-                    </span>
-                    <p className="text-[11px] text-gray-500 mt-0.5">
-                      {activeUser.persona} ({activeUser.purchaseHistoryCount} verified interactions)
-                    </p>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {USER_PROFILES.map((profile) => {
-                      const isActive = profile.id === activeUser.id;
-                      return (
-                        <button
-                          key={profile.id}
-                          onClick={() => {
-                            onSelectUser(profile);
-                            setShowUserDropdown(false);
-                          }}
-                          className={`w-full text-left p-2 rounded-md transition flex items-center gap-2.5 cursor-pointer ${
-                            isActive ? 'bg-red-50 text-[#db4444] font-bold' : 'hover:bg-gray-50 text-gray-700'
-                          }`}
-                        >
-                          <img
-                            src={profile.avatar}
-                            alt={profile.name}
-                            className="w-7 h-7 rounded-full object-cover shrink-0"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs truncate">{profile.name}</p>
-                            <p className="text-[10px] text-gray-400 font-normal truncate">{profile.persona}</p>
-                          </div>
-                          {isActive && <CheckCircle2 className="w-4 h-4 text-[#db4444] shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
-                    <span className="text-gray-400">Personalized Recommendations</span>
-                    <button
-                      onClick={() => {
-                        setShowUserDropdown(false);
-                        onOpenArchitecture();
-                      }}
-                      className="text-[#db4444] hover:underline font-semibold cursor-pointer"
-                    >
-                      Specs
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>

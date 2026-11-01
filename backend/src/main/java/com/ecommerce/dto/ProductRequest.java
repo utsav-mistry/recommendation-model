@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Positive;
 import java.util.List;
 
 public class ProductRequest {
+    private String parentAsin;
     @NotBlank(message = "Product name is required")
     private String name;
 
@@ -42,6 +43,14 @@ public class ProductRequest {
 
     public String getName() {
         return name;
+    }
+
+    public String getParentAsin() {
+        return parentAsin;
+    }
+
+    public void setParentAsin(String parentAsin) {
+        this.parentAsin = parentAsin;
     }
 
     public void setName(String name) {

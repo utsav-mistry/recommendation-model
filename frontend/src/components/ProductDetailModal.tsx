@@ -8,20 +8,21 @@ import {
   ShoppingCart, 
   Plus
 } from 'lucide-react';
-import { AMAZON_PRODUCTS } from '../data/amazon2023Data';
 
 interface ProductDetailModalProps {
   product: Product | null;
   onClose: () => void;
   onAddToCart: (product: Product, quantity?: number) => void;
   onSelectProduct: (product: Product) => void;
+  similarProducts?: Product[];
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   product,
   onClose,
   onAddToCart,
-  onSelectProduct
+  onSelectProduct,
+  similarProducts = []
 }) => {
   if (!product) return null;
 
@@ -30,9 +31,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [bundleChecked, setBundleChecked] = useState(true);
 
   // Find co-purchased item for "Frequently Bought Together" (recommendation signal)
-  const coPurchasedProduct = AMAZON_PRODUCTS.find((p) =>
-    product.coPurchasedAsins.includes(p.asin)
-  ) || AMAZON_PRODUCTS.find((p) => p.asin !== product.asin);
+  const coPurchasedProduct = similarProducts.find((p) => p.asin !== product.asin);
 
   const bundleTotal = coPurchasedProduct && bundleChecked
     ? product.price + coPurchasedProduct.price

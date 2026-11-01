@@ -1,5 +1,5 @@
 📡 E-Commerce REST API Contract for Frontend
-This contract defines all endpoints, request/response formats, query parameters, and TypeScript types for integrating frontend clients (React, Next.js, Vue, Angular, Mobile) with the Spring Boot backend.
+This document describes the retained Spring Boot contract for future backend integration. The current standalone React demo does not call these endpoints; its catalogue and recommendation requests use the FastAPI service documented in `recommendation_service`.
 
 Base URL: http://localhost:8080/api
 Content-Type: application/json

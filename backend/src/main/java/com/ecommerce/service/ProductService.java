@@ -29,6 +29,7 @@ public class ProductService {
     public Product createProduct(ProductRequest request) {
         Product product = new Product();
         product.setName(request.getName());
+        product.setParentAsin(request.getParentAsin());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setCategory(request.getCategory());
@@ -41,6 +42,9 @@ public class ProductService {
     public Product updateProduct(Long id, ProductRequest request) {
         Product product = getProductById(id);
         product.setName(request.getName());
+        if (request.getParentAsin() != null) {
+            product.setParentAsin(request.getParentAsin());
+        }
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setCategory(request.getCategory());

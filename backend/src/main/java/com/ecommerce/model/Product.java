@@ -6,6 +6,7 @@ import java.util.List;
 
 public class Product {
     private Long id;
+    private String parentAsin;
     private String name;
     private String description;
     private Double price;
@@ -47,6 +48,14 @@ public class Product {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getParentAsin() {
+        return parentAsin;
+    }
+
+    public void setParentAsin(String parentAsin) {
+        this.parentAsin = parentAsin;
     }
 
     public String getName() {

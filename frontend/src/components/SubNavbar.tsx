@@ -1,30 +1,19 @@
 import React from 'react';
-import { Zap, Sparkles, Layers, Sliders } from 'lucide-react';
-import { RecEngineMode } from '../types/ecommerce';
 
 interface SubNavbarProps {
   selectedCategory: string;
   onSelectCategory: (cat: string) => void;
-  recMode: RecEngineMode;
-  onSelectRecMode: (mode: RecEngineMode) => void;
-  onOpenArchitecture: () => void;
+  categories?: Array<{ name: string; label: string; product_count: number }>;
 }
 
 export const SubNavbar: React.FC<SubNavbarProps> = ({
   selectedCategory,
   onSelectCategory,
-  recMode,
-  onSelectRecMode,
-  onOpenArchitecture
+  categories = []
 }) => {
   const departments = [
-    'All Departments',
-    'Audio & Headphones',
-    'Computers & Accessories',
-    'Electronics',
-    'Smart Home',
-    'Cameras',
-    'Wearables'
+    { name: 'All Departments', label: 'All Departments' },
+    ...categories.map((category) => ({ name: category.name, label: category.label }))
   ];
 
   return (
@@ -33,40 +22,23 @@ export const SubNavbar: React.FC<SubNavbarProps> = ({
         {/* Horizontal Category Pill Bar */}
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
           {departments.map((dept) => {
-            const isSelected = selectedCategory === dept;
+            const isSelected = selectedCategory === dept.name;
             return (
               <button
-                key={dept}
-                onClick={() => onSelectCategory(dept)}
+                key={dept.name}
+                onClick={() => onSelectCategory(dept.name)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition cursor-pointer ${
                   isSelected
                     ? 'bg-black text-white shadow-xs'
                     : 'bg-[#f5f5f5] text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {dept}
+                {dept.label}
               </button>
             );
           })}
         </div>
 
-        {/* Recommendation Feed Selector */}
-        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-          <div className="flex items-center gap-1.5 bg-[#f5f5f5] px-3 py-1.5 rounded-full border border-gray-200 text-xs">
-            <Zap className="w-3.5 h-3.5 text-[#db4444]" />
-            <span className="text-gray-500 font-medium">Feed:</span>
-            <select
-              value={recMode}
-              onChange={(e) => onSelectRecMode(e.target.value as RecEngineMode)}
-              className="bg-transparent text-gray-900 font-semibold outline-none cursor-pointer pr-1"
-            >
-              <option value="two-tower">Personalized For You</option>
-              <option value="collaborative-filtering">Community Favorites</option>
-              <option value="hybrid-graph">Trending & Discovery</option>
-              <option value="popular-baseline">Most Popular</option>
-            </select>
-          </div>
-        </div>
       </div>
     </div>
   );

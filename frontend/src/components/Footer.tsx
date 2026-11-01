@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
-import { Send, ArrowUp, ExternalLink, Cpu, LayoutDashboard } from 'lucide-react';
+import { Send, ArrowUp } from 'lucide-react';
 
-interface FooterProps {
-  onOpenArchitecture: () => void;
-  onOpenDashboardDesign: () => void;
-}
-
-export const Footer: React.FC<FooterProps> = ({
-  onOpenArchitecture,
-  onOpenDashboardDesign
-}) => {
+export const Footer: React.FC = () => {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
@@ -60,10 +52,8 @@ export const Footer: React.FC<FooterProps> = ({
         <div className="space-y-3">
           <h4 className="font-bold text-white text-base">Support</h4>
           <p className="text-xs text-gray-400 leading-relaxed">
-            111 Bijoy sarani, Dhaka, DH 1515, Bangladesh.
+            Support for the Amazon 2023 catalogue demo.
           </p>
-          <p className="text-xs text-gray-400">exclusive@gmail.com</p>
-          <p className="text-xs text-gray-400">+88015-88888-9999</p>
         </div>
 
         {/* Col 3: Account */}
@@ -89,49 +79,12 @@ export const Footer: React.FC<FooterProps> = ({
           </ul>
         </div>
 
-        {/* Col 5: RecSys Architecture & Links */}
+        {/* Col 5: Data source */}
         <div className="space-y-3">
-          <h4 className="font-bold text-white text-base">RecSys Specs</h4>
+          <h4 className="font-bold text-white text-base">Data source</h4>
           <ul className="space-y-2 text-xs text-gray-400">
             <li>
-              <button
-                onClick={onOpenArchitecture}
-                className="text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1.5 cursor-pointer"
-              >
-                <Cpu className="w-3.5 h-3.5" />
-                <span>Architecture Blueprint</span>
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={onOpenDashboardDesign}
-                className="text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1.5 cursor-pointer"
-              >
-                <LayoutDashboard className="w-3.5 h-3.5" />
-                <span>Dashboard Wireframe</span>
-              </button>
-            </li>
-            <li>
-              <a
-                href="https://huggingface.co/datasets/ChenglongMa/amazon-2023-all-category-k-core/tree/main/20-core"
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-white flex items-center gap-1 transition"
-              >
-                <span>Hugging Face 20-Core</span>
-                <ExternalLink className="w-3 h-3 text-gray-500" />
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://www.kaggle.com/code/utsavmistry30/hugging-face-dataset-tests?scriptVersionId=362242617"
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-white flex items-center gap-1 transition"
-              >
-                <span>Kaggle Pipeline</span>
-                <ExternalLink className="w-3 h-3 text-gray-500" />
-              </a>
+              <span>Amazon 2023 catalogue</span>
             </li>
           </ul>
         </div>

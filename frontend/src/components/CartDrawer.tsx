@@ -9,7 +9,6 @@ import {
   ShoppingBag,
   Sparkles
 } from 'lucide-react';
-import { AMAZON_PRODUCTS } from '../data/amazon2023Data';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -20,6 +19,7 @@ interface CartDrawerProps {
   onSelectProduct: (product: Product) => void;
   onAddToCart: (product: Product) => void;
   onClearCart?: () => void;
+  recommendationProducts?: Product[];
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -30,7 +30,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onRemoveItem,
   onSelectProduct,
   onAddToCart,
-  onClearCart
+  onClearCart,
+  recommendationProducts = []
 }) => {
   const [orderComplete, setOrderComplete] = useState(false);
 
@@ -46,9 +47,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   // Suggested impulse cross-sells not in cart (recommendation signal)
   const cartAsins = cartItems.map((item) => item.product.asin);
-  const impulseRecs = AMAZON_PRODUCTS.filter(
-    (p) => !cartAsins.includes(p.asin) && p.price < 60
-  ).slice(0, 2);
+  const impulseRecs = recommendationProducts
+    .filter((p) => !cartAsins.includes(p.asin))
+    .slice(0, 2);
 
   const handleCheckout = () => {
     setOrderComplete(true);

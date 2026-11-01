@@ -1,8 +1,90 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment and local secrets
+.env
+.env.*
+.env*
+!.env.example
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Datasets and generated data
+# Keep dataset structure/metadata tracked, but ignore local data files.
+datasets/**
+!datasets/**/
+!datasets/**/*.md
+!datasets/**/*.txt
+!datasets/**/*.json
+!datasets/**/*.yaml
+!datasets/**/*.yml
+!datasets/**/.gitkeep
+
+data/**
+!data/**/
+!data/**/*.md
+!data/**/*.txt
+!data/**/*.json
+!data/**/*.yaml
+!data/**/*.yml
+!data/**/.gitkeep
+
+# Trained models and checkpoints
+models/**
+!models/**/
+!models/**/*.md
+!models/**/*.json
+!models/**/*.yaml
+!models/**/*.yml
+!models/**/.gitkeep
+checkpoints/
+artifacts/
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.hdf5
+*.keras
+*.onnx
+*.pt
+*.pth
+*.safetensors
+*.bin
+
+# Logs and local outputs
+logs/
+outputs/
+*.log
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/
+
+*.crdownload
+*.duckdb
+*.parquet
+experiments/
+
+# Frontend build and dependency outputs
 node_modules/
 build/
 dist/
 coverage/
-.DS_Store
-*.log
-.env*
-!.env.example
+ppt_pointers.txt
