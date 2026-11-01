@@ -22,6 +22,7 @@ export interface Product {
   originalPrice?: number;
   rating: number;
   reviewCount: number;
+  ratingDistribution?: Record<string, number>;
   image: string;
   additionalImages?: string[];
   description: string[];
@@ -33,8 +34,6 @@ export interface Product {
   kCoreInteractionCount: number; // 20-core density
   coPurchasedAsins: string[];
   similarAsins: string[];
-  twoTowerEmbeddingSimilarity?: number; // Score between 0 and 1
-  recReason?: string;
   reviews: Review[];
 }
 

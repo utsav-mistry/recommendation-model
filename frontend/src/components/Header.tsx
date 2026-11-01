@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Search, 
   ShoppingCart, 
-  ChevronDown, 
+  Heart,
+  ClipboardList,
   ArrowRight,
   X,
   TrendingUp
@@ -13,6 +14,8 @@ import { AuthUser } from '../types/api';
 interface HeaderProps {
   cartItems: CartItem[];
   onOpenCart: () => void;
+  onOpenWishlist: () => void;
+  onOpenOrders: () => void;
   user: AuthUser;
   onLogout: () => void;
   searchQuery: string;
@@ -26,6 +29,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   cartItems,
   onOpenCart,
+  onOpenWishlist,
+  onOpenOrders,
   user,
   onLogout,
   searchQuery,
@@ -94,28 +99,6 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-100 select-none shadow-xs">
-      {/* Figma Top Announcement Bar (Black background with white text) */}
-      <div className="bg-black text-white text-xs px-4 py-2 flex items-center justify-between">
-        <div className="max-w-[1400px] mx-auto w-full flex items-center justify-between text-[11px] sm:text-xs">
-          <div className="flex items-center gap-2 mx-auto sm:mx-0">
-            <span className="text-gray-300">
-              Summer Sale For All Electronics &amp; Free Express Delivery - OFF 50%!
-            </span>
-            <button
-              onClick={() => onCategoryChange('All Departments')}
-              className="font-bold underline text-white hover:text-amber-300 ml-1 cursor-pointer"
-            >
-              ShopNow
-            </button>
-          </div>
-
-          <div className="hidden sm:flex items-center gap-1 text-gray-300">
-            <span>English</span>
-            <ChevronDown className="w-3 h-3" />
-          </div>
-        </div>
-      </div>
-
       {/* Main Navigation Bar */}
       <div className="max-w-[1400px] mx-auto px-4 py-4 flex items-center justify-between gap-4">
         {/* Brand Logo */}
@@ -133,19 +116,6 @@ export const Header: React.FC<HeaderProps> = ({
             Curated Picks
           </span>
         </div>
-
-        {/* Center Navigation Links */}
-        <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-sm font-medium text-black">
-          <button
-            onClick={() => {
-              onCategoryChange('All Departments');
-              onSearchChange('');
-            }}
-            className="relative py-1 text-[#db4444] font-bold cursor-pointer"
-          >
-            Home
-          </button>
-        </nav>
 
         {/* Right Section: Interactive Search Bar & Action Icons */}
         <div className="flex items-center gap-3 sm:gap-4 flex-1 justify-end max-w-xl">
@@ -222,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({
                               </p>
                               <div className="flex items-center gap-2 text-[11px]">
                                 <span className="font-bold text-[#db4444]">
-                                  ${product.price.toFixed(2)}
+                                  {product.inStock ? `$${product.price.toFixed(2)}` : 'Unavailable'}
                                 </span>
                                 <span className="text-gray-400">•</span>
                                 <span className="text-gray-500">{product.brand}</span>
@@ -280,12 +250,18 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Action Icons Cluster */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <div className="hidden lg:flex items-center gap-2 text-xs text-gray-600">
-              <span className="max-w-32 truncate">{user.display_name}</span>
+              <span className="max-w-32 truncate">{user.name}</span>
               <button onClick={onLogout} className="font-semibold text-gray-900 hover:text-[#db4444]">
                 Sign out
               </button>
             </div>
             {/* Cart Icon */}
+            <button onClick={onOpenWishlist} className="p-2 text-gray-800 hover:text-[#db4444]" title="Wishlist" aria-label="Wishlist">
+              <Heart className="w-5 h-5" />
+            </button>
+            <button onClick={onOpenOrders} className="p-2 text-gray-800 hover:text-[#db4444]" title="Purchase history" aria-label="Purchase history">
+              <ClipboardList className="w-5 h-5" />
+            </button>
             <button
               onClick={onOpenCart}
               className="relative p-2 text-gray-800 hover:text-black transition cursor-pointer rounded-full hover:bg-gray-100"

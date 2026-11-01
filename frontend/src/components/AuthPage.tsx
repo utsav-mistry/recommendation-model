@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, LockKeyhole, Mail, UserRound } from 'lucide-react';
+import { ArrowRight, LockKeyhole, Mail, UserRound, CalendarDays } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { AuthUser } from '../types/api';
 
@@ -10,6 +10,7 @@ interface AuthPageProps {
 export const AuthPage: React.FC<AuthPageProps> = ({ onAuthenticated }) => {
   const [isSignup, setIsSignup] = useState(false);
   const [displayName, setDisplayName] = useState('');
+  const [age, setAge] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,7 +22,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthenticated }) => {
     setIsSubmitting(true);
     try {
       const response = isSignup
-        ? await apiService.signup(email, password, displayName)
+        ? await apiService.signup(email, password, displayName, Number(age))
         : await apiService.login(email, password);
       onAuthenticated(response.token, response.user);
     } catch (requestError) {
@@ -56,6 +57,23 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthenticated }) => {
                   required
                   value={displayName}
                   onChange={(event) => setDisplayName(event.target.value)}
+                  className="w-full rounded-md border border-gray-300 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-black"
+                />
+              </span>
+            </label>
+          )}
+          {isSignup && (
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-gray-700">Age</span>
+              <span className="relative block">
+                <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  required
+                  min={1}
+                  max={120}
+                  type="number"
+                  value={age}
+                  onChange={(event) => setAge(event.target.value)}
                   className="w-full rounded-md border border-gray-300 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-black"
                 />
               </span>

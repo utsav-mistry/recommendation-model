@@ -1,139 +1,70 @@
-import React, { useState, useEffect } from 'react';
-import { Product } from '../types/ecommerce';
-import { ProductCard } from './ProductCard';
+import React, { useState } from 'react';
 import { 
+  Baby,
+  BookOpen,
+  BriefcaseBusiness,
+  Camera,
+  Car,
+  Dumbbell,
+  Gamepad2,
+  Headphones,
+  Home,
+  Laptop,
+  Monitor,
+  Music,
+  PawPrint,
+  Pill,
+  Shirt,
+  ShoppingBag,
   Smartphone, 
-  Monitor, 
-  Watch, 
-  Camera, 
-  Headphones, 
-  Gamepad2 
+  Utensils,
+  Watch
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 interface CategoryCardsGridProps {
-  products: Product[];
-  onSelectProduct: (product: Product) => void;
   onSelectCategory: (category: string) => void;
-  onAddToCart: (product: Product, e: React.MouseEvent) => void;
   categories: Array<{ name: string; label: string; product_count: number }>;
 }
 
 export const CategoryCardsGrid: React.FC<CategoryCardsGridProps> = ({
-  products,
-  onSelectProduct,
   onSelectCategory,
-  onAddToCart,
   categories
 }) => {
-  // Flash Sales Countdown Timer
-  const [timeLeft, setTimeLeft] = useState({
-    days: 3,
-    hours: 23,
-    minutes: 19,
-    seconds: 56
-  });
-
   const [activeCategoryIcon, setActiveCategoryIcon] = useState('Headphones');
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
-        if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 };
-        if (prev.hours > 0) return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        return { ...prev, days: Math.max(0, prev.days - 1), hours: 23, minutes: 59, seconds: 59 };
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const getCategoryIcon = (category: { name: string; label: string }): LucideIcon => {
+    const categoryText = `${category.name} ${category.label}`.toLowerCase();
+    if (/beauty|personal care|cosmetic|skin|hair/.test(categoryText)) return ShoppingBag;
+    if (/baby|child|kid|toy/.test(categoryText)) return Baby;
+    if (/book|literature|magazine/.test(categoryText)) return BookOpen;
+    if (/business|office|industrial|professional/.test(categoryText)) return BriefcaseBusiness;
+    if (/camera|photo|video/.test(categoryText)) return Camera;
+    if (/car|automotive|vehicle|motorcycle/.test(categoryText)) return Car;
+    if (/sport|fitness|exercise|outdoor/.test(categoryText)) return Dumbbell;
+    if (/game|video game|console/.test(categoryText)) return Gamepad2;
+    if (/headphone|audio|music|instrument/.test(categoryText)) return Headphones;
+    if (/home|kitchen|furniture|household/.test(categoryText)) return Home;
+    if (/computer|laptop|electronics|tablet/.test(categoryText)) return Laptop;
+    if (/monitor|television|tv/.test(categoryText)) return Monitor;
+    if (/pet|animal/.test(categoryText)) return PawPrint;
+    if (/health|medical|vitamin|drug/.test(categoryText)) return Pill;
+    if (/fashion|clothing|apparel|shoe|jewelry/.test(categoryText)) return Shirt;
+    if (/phone|mobile|cellular/.test(categoryText)) return Smartphone;
+    if (/watch|clock/.test(categoryText)) return Watch;
+    if (/food|grocery|restaurant|cook/.test(categoryText)) return Utensils;
+    if (/instrument|music/.test(categoryText)) return Music;
+    return ShoppingBag;
+  };
 
-  const flashSaleProducts = products.filter((p) => p.originalPrice).slice(0, 4);
-
-  const icons = [Smartphone, Monitor, Watch, Camera, Headphones, Gamepad2];
-  const categoryBoxes = categories.slice(0, 6).map((category, index) => ({
+  const categoryBoxes = categories.slice(0, 6).map((category) => ({
     name: category.label,
-    icon: icons[index % icons.length],
+    icon: getCategoryIcon(category),
     targetCategory: category.name
   }));
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 space-y-16 py-8">
-      {/* SECTION 1: Flash Sales with Live Countdown Timer */}
-      <section className="space-y-6">
-        {/* Section Header with Figma Red Pill */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <span className="w-5 h-10 bg-[#db4444] rounded-sm inline-block" />
-              <span className="text-sm font-bold text-[#db4444]">Today's</span>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-12">
-              <h3 className="text-2xl sm:text-3xl font-extrabold text-black tracking-tight">
-                Flash Sales
-              </h3>
-
-              {/* Countdown Timer Block */}
-              <div className="flex items-center gap-4 text-center">
-                <div>
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase block">Days</span>
-                  <span className="text-xl sm:text-2xl font-black text-black">
-                    {String(timeLeft.days).padStart(2, '0')}
-                  </span>
-                </div>
-                <span className="text-xl font-bold text-[#db4444]">:</span>
-                <div>
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase block">Hours</span>
-                  <span className="text-xl sm:text-2xl font-black text-black">
-                    {String(timeLeft.hours).padStart(2, '0')}
-                  </span>
-                </div>
-                <span className="text-xl font-bold text-[#db4444]">:</span>
-                <div>
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase block">Minutes</span>
-                  <span className="text-xl sm:text-2xl font-black text-black">
-                    {String(timeLeft.minutes).padStart(2, '0')}
-                  </span>
-                </div>
-                <span className="text-xl font-bold text-[#db4444]">:</span>
-                <div>
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase block">Seconds</span>
-                  <span className="text-xl sm:text-2xl font-black text-black">
-                    {String(timeLeft.seconds).padStart(2, '0')}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Flash Sale Product Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {flashSaleProducts.map((p) => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              onSelectProduct={onSelectProduct}
-              onAddToCart={onAddToCart}
-            />
-          ))}
-        </div>
-
-        {/* View All Products Button */}
-        <div className="text-center pt-4">
-          <button
-            onClick={() => onSelectCategory('All Departments')}
-            className="bg-[#db4444] hover:bg-[#c93b3b] text-white font-medium text-xs sm:text-sm px-10 py-3.5 rounded-sm transition cursor-pointer shadow-xs"
-          >
-            View All Products
-          </button>
-        </div>
-      </section>
-
-      {/* Horizontal Divider */}
-      <hr className="border-gray-200" />
-
-      {/* SECTION 2: Browse By Category */}
+    <div className="max-w-[1400px] mx-auto px-4 py-8">
       <section className="space-y-6">
         <div className="space-y-2">
           <div className="flex items-center gap-3">

@@ -54,6 +54,7 @@ export interface FastApiProduct {
   brand?: string | null;
   store?: string | null;
   recommendation_score?: number;
+  rating_distribution?: Record<string, number>;
 }
 
 export interface ProductPage {
@@ -64,8 +65,12 @@ export interface ProductPage {
 }
 
 export interface AuthUser {
+  id: number;
+  name: string;
   email: string;
-  display_name: string;
+  age: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AuthResponse {
@@ -105,6 +110,9 @@ export interface ProductFilterParams {
   category?: string;
   minPrice?: number;
   maxPrice?: number;
+  minRating?: number;
+  store?: string;
+  sort?: 'relevance' | 'price_asc' | 'price_desc' | 'rating_desc' | 'popularity';
   sortBy?: ProductSortBy;
 }
 
@@ -115,6 +123,38 @@ export interface AddToCartRequest {
 
 export interface UpdateCartItemRequest {
   quantity: number;
+}
+
+export interface UserProductItem {
+  id: number;
+  parent_asin: string;
+  quantity?: number;
+  product: FastApiProduct;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface UserProductList {
+  items: UserProductItem[];
+  unavailable_parent_asins: string[];
+}
+
+export interface OrderSummary {
+  id: number;
+  order_status: string;
+  total_amount: number;
+  created_at: string;
+}
+
+export interface OrderItem {
+  parent_asin: string;
+  quantity: number;
+  unit_price: number;
+  product: FastApiProduct | null;
+}
+
+export interface Order extends OrderSummary {
+  items: OrderItem[];
 }
 
 export interface ReviewRequest {

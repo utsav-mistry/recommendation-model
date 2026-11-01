@@ -79,8 +79,10 @@ Thumbs.db
 
 *.crdownload
 *.duckdb
+*.sqlite3
 *.parquet
-experiments/
+*.npz
+*.npy
 
 # Frontend build and dependency outputs
 node_modules/
@@ -88,3 +90,4 @@ build/
 dist/
 coverage/
 ppt_pointers.txt
+pics/

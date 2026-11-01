@@ -36,6 +36,13 @@ class RecommendationService:
     def _connect(self) -> duckdb.DuckDBPyConnection:
         return duckdb.connect(self.db_path, read_only=True)
 
+    def connection_check(self) -> None:
+        connection = self._connect()
+        try:
+            connection.execute("SELECT 1").fetchone()
+        finally:
+            connection.close()
+
     @staticmethod
     def _string_list(value: Any) -> list[str]:
         if value is None:
@@ -111,12 +118,34 @@ class RecommendationService:
             for _, row in rows.iterrows()
         }
 
+    def _rating_distribution(self, parent_asin: str) -> dict[str, int]:
+        connection = self._connect()
+        try:
+            rows = connection.execute(
+                """
+                SELECT CAST(rating AS INTEGER) AS stars, COUNT(*) AS count
+                FROM ratings
+                WHERE parent_asin = ? AND rating BETWEEN 1 AND 5
+                GROUP BY CAST(rating AS INTEGER)
+                """,
+                [parent_asin],
+            ).fetchall()
+        finally:
+            connection.close()
+        distribution = {str(stars): int(count) for stars, count in rows}
+        return {str(stars): distribution.get(str(stars), 0) for stars in range(1, 6)}
+
     def products(
         self,
         page: int,
         page_size: int,
         search: str | None = None,
         category: str | None = None,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        min_rating: float | None = None,
+        store: str | None = None,
+        sort: str = "relevance",
     ) -> ProductPage:
         page_size = min(page_size, 100)
         offset = (page - 1) * page_size
@@ -134,7 +163,27 @@ class RecommendationService:
                 "OR REPLACE(source_category, '_', ' ') = ?)"
             )
             params.extend([category, category, category])
+        price_expression = "TRY_CAST(regexp_replace(price, '[^0-9.]', '', 'g') AS DOUBLE)"
+        if min_price is not None:
+            clauses.append(f"{price_expression} >= ?")
+            params.append(min_price)
+        if max_price is not None:
+            clauses.append(f"{price_expression} <= ?")
+            params.append(max_price)
+        if min_rating is not None:
+            clauses.append("COALESCE(average_rating, 0) >= ?")
+            params.append(min_rating)
+        if store:
+            clauses.append("LOWER(COALESCE(store, '')) LIKE ?")
+            params.append(f"%{store.strip().lower()}%")
         where = " AND ".join(clauses)
+        order_by = {
+            "relevance": "parent_asin",
+            "price_asc": f"{price_expression} ASC NULLS LAST, parent_asin",
+            "price_desc": f"{price_expression} DESC NULLS LAST, parent_asin",
+            "rating_desc": "average_rating DESC NULLS LAST, parent_asin",
+            "popularity": "rating_number DESC NULLS LAST, parent_asin",
+        }.get(sort, "parent_asin")
         connection = self._connect()
         try:
             total = connection.execute(
@@ -155,7 +204,7 @@ class RecommendationService:
                     store
                 FROM products
                 WHERE {where}
-                ORDER BY parent_asin
+                ORDER BY {order_by}
                 LIMIT ? OFFSET ?
                 """,
                 [*params, page_size, offset],
@@ -166,7 +215,17 @@ class RecommendationService:
         return ProductPage(items=items, page=page, page_size=page_size, total=total)
 
     def product(self, parent_asin: str) -> dict[str, Any] | None:
-        return self._metadata([parent_asin]).get(parent_asin)
+        result = self._metadata([parent_asin]).get(parent_asin)
+        if result is not None:
+            distribution = self._rating_distribution(parent_asin)
+            rating_count = sum(distribution.values())
+            if rating_count:
+                result["review_count"] = rating_count
+                result["rating"] = sum(
+                    int(stars) * count for stars, count in distribution.items()
+                ) / rating_count
+            result["rating_distribution"] = distribution
+        return result
 
     def categories(self) -> list[dict[str, Any]]:
         connection = self._connect()
@@ -185,7 +244,7 @@ class RecommendationService:
         return [
             {
                 "name": category,
-                "label": str(category).replace("_", " "),
+                "label": str(category).replace("_", " ").title(),
                 "product_count": int(count),
             }
             for category, count in rows

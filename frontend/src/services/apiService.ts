@@ -3,35 +3,46 @@ import {
   ProductPage,
   ProductFilterParams,
   AuthResponse,
-  AuthUser
+  AuthUser,
+  UserProductList,
+  Order,
+  OrderSummary
 } from '../types/api';
 import { Product } from '../types/ecommerce';
 
 const FASTAPI_ROOT_URL =
   import.meta.env.VITE_FASTAPI_API_URL ||
-  'http://localhost:8001';
+  'http://localhost:8000';
 const FASTAPI_BASE_URL = `${FASTAPI_ROOT_URL}/api`;
 
-async function fastApiRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
+async function fastApiRequest<T>(
+  endpoint: string,
+  options?: RequestInit,
+  token?: string
+): Promise<T> {
   const res = await fetch(`${FASTAPI_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options?.headers || {})
     }
   });
   if (!res.ok) {
-    const body = await res.json().catch(() => null) as { detail?: string } | null;
-    throw new Error(body?.detail || `FastAPI request failed with status ${res.status}`);
+    const body = await res.json().catch(() => null) as {
+      detail?: string;
+      error?: { message?: string };
+    } | null;
+    throw new Error(body?.error?.message || body?.detail || `FastAPI request failed with status ${res.status}`);
   }
   return res.json() as Promise<T>;
 }
 
 export const apiService = {
-  async signup(email: string, password: string, displayName: string): Promise<AuthResponse> {
+  async signup(email: string, password: string, name: string, age: number): Promise<AuthResponse> {
     return fastApiRequest<AuthResponse>('/auth/signup', {
       method: 'POST',
-      body: JSON.stringify({ email, password, display_name: displayName })
+      body: JSON.stringify({ email, password, name, age })
     });
   },
 
@@ -43,10 +54,12 @@ export const apiService = {
   },
 
   async getCurrentUser(token: string): Promise<AuthUser> {
-    const response = await fastApiRequest<{ user: AuthUser }>(
-      `/auth/me?token=${encodeURIComponent(token)}`
-    );
+    const response = await fastApiRequest<{ user: AuthUser }>('/auth/me', undefined, token);
     return response.user;
+  },
+
+  async logout(token: string): Promise<void> {
+    await fastApiRequest('/auth/logout', { method: 'POST' }, token);
   },
 
   /**
@@ -58,6 +71,11 @@ export const apiService = {
     query.append('page_size', String(params?.pageSize || 48));
     if (params?.search) query.append('search', params.search);
     if (params?.category && params.category !== 'All Departments') query.append('category', params.category);
+    if (params?.minPrice !== undefined) query.append('min_price', String(params.minPrice));
+    if (params?.maxPrice !== undefined) query.append('max_price', String(params.maxPrice));
+    if (params?.minRating !== undefined) query.append('min_rating', String(params.minRating));
+    if (params?.store) query.append('store', params.store);
+    if (params?.sort) query.append('sort', params.sort);
 
     const qs = query.toString() ? `?${query.toString()}` : '';
     return fastApiRequest<ProductPage>(`/products${qs}`);
@@ -93,6 +111,75 @@ export const apiService = {
     return response.items;
   },
 
+  async getWishlist(token: string): Promise<UserProductList> {
+    return fastApiRequest<UserProductList>('/wishlist', undefined, token);
+  },
+
+  async addWishlist(parentAsin: string, token: string): Promise<UserProductList> {
+    return fastApiRequest<UserProductList>(`/wishlist/${encodeURIComponent(parentAsin)}`, {
+      method: 'POST'
+    }, token);
+  },
+
+  async removeWishlist(parentAsin: string, token: string): Promise<UserProductList> {
+    return fastApiRequest<UserProductList>(`/wishlist/${encodeURIComponent(parentAsin)}`, {
+      method: 'DELETE'
+    }, token);
+  },
+
+  async getCart(token: string): Promise<UserProductList> {
+    return fastApiRequest<UserProductList>('/cart', undefined, token);
+  },
+
+  async addCart(parentAsin: string, quantity: number, token: string): Promise<UserProductList> {
+    return fastApiRequest<UserProductList>(`/cart/${encodeURIComponent(parentAsin)}`, {
+      method: 'POST',
+      body: JSON.stringify({ quantity })
+    }, token);
+  },
+
+  async updateCart(parentAsin: string, quantity: number, token: string): Promise<UserProductList> {
+    return fastApiRequest<UserProductList>(`/cart/${encodeURIComponent(parentAsin)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ quantity })
+    }, token);
+  },
+
+  async removeCart(parentAsin: string, token: string): Promise<UserProductList> {
+    return fastApiRequest<UserProductList>(`/cart/${encodeURIComponent(parentAsin)}`, {
+      method: 'DELETE'
+    }, token);
+  },
+
+  async recordEvent(
+    event: {
+      event_type: string;
+      parent_asin?: string;
+      search_query?: string;
+      category?: string;
+      metadata?: Record<string, string | number | boolean>;
+    },
+    token: string
+  ): Promise<void> {
+    await fastApiRequest('/events', {
+      method: 'POST',
+      body: JSON.stringify(event)
+    }, token);
+  },
+
+  async checkout(token: string): Promise<Order> {
+    return fastApiRequest<Order>('/orders/checkout', { method: 'POST' }, token);
+  },
+
+  async getOrders(token: string): Promise<OrderSummary[]> {
+    const response = await fastApiRequest<{ items: OrderSummary[] }>('/orders', undefined, token);
+    return response.items;
+  },
+
+  async getOrder(orderId: number, token: string): Promise<Order> {
+    return fastApiRequest<Order>(`/orders/${orderId}`, undefined, token);
+  },
+
 };
 
 export function mapFastApiProductToFrontend(fp: FastApiProduct): Product {
@@ -106,21 +193,18 @@ export function mapFastApiProductToFrontend(fp: FastApiProduct): Product {
     price: fp.price ?? 0,
     rating: fp.rating,
     reviewCount: fp.review_count,
+    ratingDistribution: fp.rating_distribution,
     image,
     additionalImages: fp.images.slice(1),
     description: fp.description.length ? fp.description : ['No description available.'],
     features: fp.features,
-    inStock: true,
+    inStock: fp.price !== null && fp.price > 0,
     isPrime: false,
     bestSeller: false,
     amazonChoice: false,
     kCoreInteractionCount: fp.review_count,
     coPurchasedAsins: [],
     similarAsins: [],
-    twoTowerEmbeddingSimilarity: fp.recommendation_score,
-    recReason: fp.recommendation_score !== undefined
-      ? 'Recommended from the trained Amazon item-item model.'
-      : 'Amazon catalogue product',
     reviews: []
   };
 }

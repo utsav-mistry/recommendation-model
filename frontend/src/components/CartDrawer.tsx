@@ -19,6 +19,7 @@ interface CartDrawerProps {
   onSelectProduct: (product: Product) => void;
   onAddToCart: (product: Product) => void;
   onClearCart?: () => void;
+  onCheckout: () => Promise<void>;
   recommendationProducts?: Product[];
 }
 
@@ -31,9 +32,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onSelectProduct,
   onAddToCart,
   onClearCart,
+  onCheckout,
   recommendationProducts = []
 }) => {
   const [orderComplete, setOrderComplete] = useState(false);
+  const [checkoutPending, setCheckoutPending] = useState(false);
 
   if (!isOpen) return null;
 
@@ -51,14 +54,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     .filter((p) => !cartAsins.includes(p.asin))
     .slice(0, 2);
 
-  const handleCheckout = () => {
-    setOrderComplete(true);
-    if (onClearCart) onClearCart();
+  const handleCheckout = async () => {
+    setCheckoutPending(true);
+    try {
+      await onCheckout();
+      setOrderComplete(true);
+    } finally {
+      setCheckoutPending(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end">
-      <div className="w-full max-w-md bg-[#eaeded] h-full shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-250">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[#eaeded]">
+      <div className="w-full bg-[#eaeded] h-full flex flex-col justify-between animate-in fade-in duration-200">
         {/* Cart Top Bar */}
         <div className="bg-[#131921] text-white p-4 flex items-center justify-between border-b border-[#232f3e]">
           <div className="flex items-center gap-2">
@@ -207,9 +215,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         </div>
                         <button
                           onClick={() => onAddToCart(rec)}
-                          className="shrink-0 bg-[#ffd814] hover:bg-[#f7ca00] text-gray-900 text-[11px] font-semibold px-2.5 py-1 rounded cursor-pointer"
+                          disabled={!rec.inStock}
+                          className="shrink-0 bg-[#ffd814] hover:bg-[#f7ca00] text-gray-900 text-[11px] font-semibold px-2.5 py-1 rounded cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed"
                         >
-                          + Add
+                          {rec.inStock ? '+ Add' : 'Out of stock'}
                         </button>
                       </div>
                     ))}
@@ -241,10 +250,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             </div>
 
             <button
-              onClick={handleCheckout}
+              onClick={() => void handleCheckout()}
+              disabled={checkoutPending}
               className="w-full bg-[#db4444] hover:bg-[#c93b3b] active:bg-[#b83333] text-white font-bold text-xs py-3 px-4 rounded-md shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Proceed to Checkout</span>
+              <span>{checkoutPending ? 'Processing...' : 'Complete simulated checkout'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 

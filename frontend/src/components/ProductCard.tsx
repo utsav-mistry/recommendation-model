@@ -1,19 +1,21 @@
 import React from 'react';
 import { Product } from '../types/ecommerce';
-import { Star, Sparkles, ShoppingCart, Eye } from 'lucide-react';
+import { Star, ShoppingCart, Eye, Heart } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
   onSelectProduct: (product: Product) => void;
   onAddToCart: (product: Product, e: React.MouseEvent) => void;
-  showRecReason?: boolean;
+  isWishlisted?: boolean;
+  onToggleWishlist?: (product: Product) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onSelectProduct,
   onAddToCart,
-  showRecReason = true
+  isWishlisted = false,
+  onToggleWishlist
 }) => {
   const discountPercent = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
@@ -33,14 +35,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </span>
         )}
 
-        {/* RecSys Match Badge */}
-        {showRecReason && product.twoTowerEmbeddingSimilarity && (
-          <span className="absolute top-3 right-12 z-10 bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
-            <Sparkles className="w-2.5 h-2.5 text-amber-600" />
-            {Math.round(product.twoTowerEmbeddingSimilarity * 100)}%
-          </span>
-        )}
-
         {/* Top-Right Action Floating Quick View Eye */}
         <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
           <button
@@ -54,6 +48,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           >
             <Eye className="w-4 h-4" />
           </button>
+          {onToggleWishlist && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleWishlist(product);
+              }}
+              className="w-8 h-8 rounded-full bg-white text-gray-700 hover:text-[#db4444] flex items-center justify-center shadow-xs transition hover:scale-110 cursor-pointer"
+              title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+              aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            >
+              <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-[#db4444] text-[#db4444]' : ''}`} />
+            </button>
+          )}
         </div>
 
         {/* Product Image */}
@@ -64,13 +71,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           loading="lazy"
         />
 
+        {!product.inStock && (
+          <span className="absolute left-3 top-3 bg-gray-800 text-white text-[10px] font-bold px-2 py-1 rounded">
+            Out of stock
+          </span>
+        )}
+
         {/* Slide-Up Black "Add To Cart" Button (Figma Signature) */}
         <button
           onClick={(e) => onAddToCart(product, e)}
-          className="absolute bottom-0 left-0 right-0 w-full bg-black hover:bg-neutral-800 text-white text-xs font-semibold py-2.5 flex items-center justify-center gap-2 transition-transform duration-200 cursor-pointer sm:translate-y-full group-hover:translate-y-0"
+          disabled={!product.inStock}
+          className="absolute bottom-0 left-0 right-0 w-full bg-black hover:bg-neutral-800 text-white text-xs font-semibold py-2.5 flex items-center justify-center gap-2 transition-transform duration-200 cursor-pointer sm:translate-y-full group-hover:translate-y-0 disabled:bg-gray-500 disabled:cursor-not-allowed"
         >
           <ShoppingCart className="w-4 h-4" />
-          <span>Add To Cart</span>
+          <span>{product.inStock ? 'Add To Cart' : 'Out of Stock'}</span>
         </button>
       </div>
 
@@ -82,7 +96,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Price Row: Red current price + strikethrough list price */}
         <div className="flex items-center gap-3 text-sm">
-          <span className="font-bold text-[#db4444]">${product.price.toFixed(2)}</span>
+          <span className={`font-bold ${product.inStock ? 'text-[#db4444]' : 'text-gray-500'}`}>
+            {product.inStock ? `$${product.price.toFixed(2)}` : 'Unavailable'}
+          </span>
           {product.originalPrice && (
             <span className="text-gray-400 line-through text-xs font-medium">
               ${product.originalPrice.toFixed(2)}
@@ -90,8 +106,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
 
-        {/* Rating Stars & Count */}
-        <div className="flex items-center gap-2 text-xs">
+        {/* Rating Stars */}
+        <div className="flex items-center text-xs">
           <div className="flex items-center text-[#ffad33]">
             {[...Array(5)].map((_, i) => (
               <Star
@@ -106,15 +122,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               />
             ))}
           </div>
-          <span className="text-gray-500 font-medium">
-            ({product.reviewCount.toLocaleString()})
-          </span>
         </div>
 
-        {/* 20-Core Density */}
-        <div className="flex items-center justify-between text-[11px] text-gray-400 pt-0.5">
-          <span>{product.kCoreInteractionCount} in 20-core</span>
-        </div>
       </div>
     </div>
   );

@@ -10,7 +10,6 @@ interface RecommendationRailProps {
   products: Product[];
   onSelectProduct: (product: Product) => void;
   onAddToCart: (product: Product, e: React.MouseEvent) => void;
-  showRecReason?: boolean;
 }
 
 export const RecommendationRail: React.FC<RecommendationRailProps> = ({
@@ -19,8 +18,7 @@ export const RecommendationRail: React.FC<RecommendationRailProps> = ({
   algorithmBadge,
   products,
   onSelectProduct,
-  onAddToCart,
-  showRecReason = true
+  onAddToCart
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -87,7 +85,6 @@ export const RecommendationRail: React.FC<RecommendationRailProps> = ({
               product={product}
               onSelectProduct={onSelectProduct}
               onAddToCart={onAddToCart}
-              showRecReason={showRecReason}
             />
           </div>
         ))}

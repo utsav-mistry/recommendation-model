@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("unused")
 @Repository
 public class ProductRepository {
     private final ConcurrentHashMap<Long, Product> products = new ConcurrentHashMap<>();

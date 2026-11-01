@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Product } from '../types/ecommerce';
+import { ProductCard } from './ProductCard';
 import { 
   X, 
   Star, 
-  Check, 
-  Sparkles, 
   ShoppingCart, 
   Plus
 } from 'lucide-react';
@@ -24,14 +23,22 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onSelectProduct,
   similarProducts = []
 }) => {
-  if (!product) return null;
-
-  const [selectedImage, setSelectedImage] = useState(product.image);
+  const [selectedImage, setSelectedImage] = useState(product?.image || '');
   const [quantity, setQuantity] = useState(1);
   const [bundleChecked, setBundleChecked] = useState(true);
 
+  useEffect(() => {
+    setSelectedImage(product?.image || '');
+    setQuantity(1);
+    setBundleChecked(true);
+  }, [product]);
+
+  if (!product) return null;
+
   // Find co-purchased item for "Frequently Bought Together" (recommendation signal)
-  const coPurchasedProduct = similarProducts.find((p) => p.asin !== product.asin);
+  const coPurchasedProduct = product.inStock
+    ? similarProducts.find((p) => p.asin !== product.asin && p.inStock)
+    : undefined;
 
   const bundleTotal = coPurchasedProduct && bundleChecked
     ? product.price + coPurchasedProduct.price
@@ -51,8 +58,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex justify-center p-2 sm:p-4">
-      <div className="bg-white w-full max-w-6xl my-auto rounded-lg shadow-2xl overflow-hidden relative animate-in fade-in zoom-in-95 duration-200 border border-gray-300">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#f3f3f3]">
+      <div className="bg-white w-full min-h-full overflow-hidden relative animate-in fade-in duration-200">
         {/* Modal Top Bar */}
         <div className="bg-[#f0f2f2] px-4 py-2 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-gray-600 truncate">
@@ -72,7 +79,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 min-h-[calc(100vh-49px)] overflow-y-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Column 1: Image Gallery (5 cols) */}
             <div className="lg:col-span-5 flex flex-col sm:flex-row gap-4">
@@ -135,10 +142,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <span className="text-xs text-[#007185] hover:underline cursor-pointer">
                   {product.reviewCount.toLocaleString()} ratings
                 </span>
-                <span className="text-xs text-gray-400">|</span>
-                <span className="text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded font-semibold">
-                  {product.kCoreInteractionCount} in 20-Core
-                </span>
               </div>
 
               {/* Price Block */}
@@ -149,7 +152,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   )}
                   <div className="flex items-start text-gray-900">
                     <span className="text-xs font-bold pt-1">$</span>
-                    <span className="text-3xl font-extrabold">{product.price.toFixed(2)}</span>
+                    <span className="text-3xl font-extrabold">
+                      {product.inStock ? product.price.toFixed(2) : 'Unavailable'}
+                    </span>
                   </div>
                 </div>
                 {product.originalPrice && (
@@ -162,31 +167,29 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </p>
               </div>
 
-              {/* Why Recommended Badge */}
-              <div className="bg-amber-50/80 border border-amber-300/80 rounded-md p-3 text-xs text-amber-950 space-y-1">
-                <div className="flex items-center gap-1.5 font-bold text-amber-900">
-                  <Sparkles className="w-4 h-4 text-amber-600" />
-                  <span>Recommendation Highlights</span>
-                </div>
-                <p className="text-[11px] leading-relaxed text-amber-900 font-medium">
-                  {product.recReason}
-                </p>
-                <div className="flex items-center gap-3 text-[10px] text-amber-800 pt-1 border-t border-amber-200">
-                  <span>Match Score: <strong>{Math.round((product.twoTowerEmbeddingSimilarity || 0.94) * 100)}%</strong></span>
-                  <span>Category: <strong>{product.category}</strong></span>
-                </div>
-              </div>
-
               {/* Key Features */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
                   About this item
                 </h4>
-                <ul className="list-disc pl-5 space-y-1 text-xs text-gray-700">
-                  {product.description.map((item, i) => (
-                    <li key={i} className="leading-relaxed">{item}</li>
-                  ))}
-                </ul>
+                {product.features.length > 0 ? (
+                  <ul className="space-y-2 text-xs text-gray-700">
+                    {product.features.slice(0, 8).map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 leading-relaxed">
+                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-[#db4444] shrink-0" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : product.description.length > 0 ? (
+                  <div className="space-y-2 text-xs leading-relaxed text-gray-700">
+                    {product.description.slice(0, 5).map((item, i) => (
+                      <p key={i}>{item}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">No additional product details are available.</p>
+                )}
               </div>
             </div>
 
@@ -194,7 +197,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="lg:col-span-3">
               <div className="border border-gray-300 rounded-md p-4 space-y-3 bg-[#fdfdfd] shadow-sm">
                 <div className="text-2xl font-bold text-gray-900">
-                  ${product.price.toFixed(2)}
+                  {product.inStock ? `$${product.price.toFixed(2)}` : 'Unavailable'}
                 </div>
 
                 <div className="space-y-1 text-xs text-gray-700">
@@ -207,8 +210,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </p>
                 </div>
 
-                <div className="pt-1 text-emerald-700 font-bold text-sm">
-                  In Stock
+                <div className={`pt-1 font-bold text-sm ${product.inStock ? 'text-emerald-700' : 'text-gray-600'}`}>
+                  {product.inStock ? 'In Stock' : 'Out of stock'}
                 </div>
 
                 {/* Quantity selector */}
@@ -231,14 +234,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {/* Add to Cart button */}
                 <div className="space-y-2 pt-2">
                   <button
+                    disabled={!product.inStock}
                     onClick={() => {
                       onAddToCart(product, quantity);
                       onClose();
                     }}
-                    className="w-full bg-[#db4444] hover:bg-[#c93b3b] text-white font-semibold text-xs py-2.5 px-4 rounded-md shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-[#db4444] hover:bg-[#c93b3b] text-white font-semibold text-xs py-2.5 px-4 rounded-md shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     <ShoppingCart className="w-4 h-4" />
-                    <span>Add to Cart</span>
+                    <span>{product.inStock ? 'Add to Cart' : 'Out of Stock'}</span>
                   </button>
                 </div>
 
@@ -287,7 +291,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         onChange={(e) => setBundleChecked(e.target.checked)}
                         className="rounded text-amber-500"
                       />
-                      <span>This item: {product.title.slice(0, 45)}... (<strong>${product.price.toFixed(2)}</strong>)</span>
+                      <span>This item: {product.title.slice(0, 45)}... (<strong>{product.inStock ? `$${product.price.toFixed(2)}` : 'Unavailable'}</strong>)</span>
                     </label>
                     <p className="text-gray-500 pl-5">
                       + {coPurchasedProduct.title.slice(0, 50)}... (<strong>${coPurchasedProduct.price.toFixed(2)}</strong>)
@@ -308,75 +312,63 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </button>
                 </div>
               </div>
+
             </div>
           )}
 
-          {/* Section: Verified Customer Reviews (Amazon 2023 Schema) */}
+          {/* Section: Customer ratings from the historical Amazon ratings table */}
           <div className="mt-8 pt-6 border-t border-gray-200">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">
-                  Customer reviews & sentiment analysis
+                  Customer ratings
                 </h3>
                 <p className="text-xs text-gray-500">
-                  Extracted from Amazon 2023 20-core verified purchase interaction dataset
+                  Based on the available Amazon star-rating records. Written reviews are not available in this dataset.
                 </p>
               </div>
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full mt-2 sm:mt-0 inline-flex items-center gap-1">
-                <Check className="w-3.5 h-3.5" /> 100% Verified Amazon Customers
+              <span className="text-xs font-semibold text-gray-600 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-full mt-2 sm:mt-0">
+                {product.reviewCount.toLocaleString()} ratings
               </span>
             </div>
-
-            <div className="space-y-4">
-              {product.reviews.map((rev) => (
-                <div key={rev.id} className="border-b border-gray-100 pb-4 last:border-none">
-                  {/* User info */}
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center">
-                      {rev.userName[0]}
+            <div className="space-y-2 max-w-xl">
+              {[5, 4, 3, 2, 1].map((stars) => {
+                const count = product.ratingDistribution?.[String(stars)] || 0;
+                const width = product.reviewCount ? (count / product.reviewCount) * 100 : 0;
+                return (
+                  <div key={stars} className="flex items-center gap-3 text-xs">
+                    <span className="w-12">{stars} star</span>
+                    <div className="h-2 flex-1 rounded bg-gray-100 overflow-hidden">
+                      <div className="h-full bg-[#ffad33]" style={{ width: `${width}%` }} />
                     </div>
-                    <span className="text-xs font-semibold text-gray-900">{rev.userName}</span>
-                    <span className="text-[11px] text-gray-400">({rev.userId})</span>
+                    <span className="w-16 text-right text-gray-500">{count.toLocaleString()}</span>
                   </div>
-
-                  {/* Rating & Title */}
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <div className="flex items-center text-[#de7921]">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-3.5 h-3.5 ${
-                            i < rev.rating ? 'fill-[#de7921]' : 'text-gray-200 fill-gray-200'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <h5 className="text-xs font-bold text-gray-900">{rev.title}</h5>
-                  </div>
-
-                  {/* Date & Verified Purchase */}
-                  <div className="text-[11px] text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
-                    <span>Reviewed on {rev.timestamp}</span>
-                    {rev.verifiedPurchase && (
-                      <span className="text-[#c45500] font-bold">Verified Purchase</span>
-                    )}
-                    <span className="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
-                      Sentiment: {(rev.sentimentScore * 100).toFixed(0)}% {rev.sentiment}
-                    </span>
-                  </div>
-
-                  {/* Review Text */}
-                  <p className="text-xs text-gray-800 leading-relaxed mt-2">
-                    {rev.text}
-                  </p>
-
-                  {/* Helpful count */}
-                  <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-2">
-                    <span>{rev.helpfulVotes} people found this helpful</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <h3 className="text-lg font-bold text-gray-900">Similar Products</h3>
+            {similarProducts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
+                {similarProducts.map((similarProduct) => (
+                  <ProductCard
+                    key={similarProduct.asin}
+                    product={similarProduct}
+                    onSelectProduct={onSelectProduct}
+                    onAddToCart={(item, event) => {
+                      event.stopPropagation();
+                      onAddToCart(item);
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 mt-2">
+                No similar products are available for this item.
+              </p>
+            )}
           </div>
         </div>
       </div>

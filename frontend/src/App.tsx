@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Product, CartItem } from './types/ecommerce';
 import { apiService, mapFastApiProductToFrontend } from './services/apiService';
-import { AuthUser } from './types/api';
+import { AuthUser, UserProductList, OrderSummary } from './types/api';
 import { AuthPage } from './components/AuthPage';
 import { Header } from './components/Header';
 import { SubNavbar } from './components/SubNavbar';
@@ -11,6 +11,8 @@ import { ProductCard } from './components/ProductCard';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { CartDrawer } from './components/CartDrawer';
 import { Footer } from './components/Footer';
+import { WishlistDrawer } from './components/WishlistDrawer';
+import { OrderHistoryDrawer } from './components/OrderHistoryDrawer';
 import { Check } from 'lucide-react';
 
 export default function App() {
@@ -18,22 +20,34 @@ export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [wishlistAsins, setWishlistAsins] = useState<Set<string>>(new Set());
+  const [wishlistProducts, setWishlistProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<OrderSummary[]>([]);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Departments');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Sorting and filtering
-  const [sortBy, setSortBy] = useState<'featured' | 'price-low' | 'price-high' | 'rating'>('featured');
-  const [primeOnly, setPrimeOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rating_desc' | 'popularity'>('relevance');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [minRating, setMinRating] = useState('');
+  const [storeFilter, setStoreFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [globalRecommendations, setGlobalRecommendations] = useState<Product[]>([]);
   const [categoryRecommendations, setCategoryRecommendations] = useState<Product[]>([]);
   const [similarRecommendations, setSimilarRecommendations] = useState<Product[]>([]);
   const [cartRecommendations, setCartRecommendations] = useState<Product[]>([]);
+  const [wishlistRecommendations, setWishlistRecommendations] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Array<{ name: string; label: string; product_count: number }>>([]);
 
   useEffect(() => {
@@ -52,19 +66,74 @@ export default function App() {
       .finally(() => setAuthReady(true));
   }, [authToken]);
 
+  const applyCartResponse = (response: UserProductList) => {
+    setCartItems(response.items
+      .filter((item) => item.quantity !== undefined)
+      .map((item) => ({
+        product: mapFastApiProductToFrontend(item.product),
+        quantity: item.quantity as number
+      })));
+  };
+
+  useEffect(() => {
+    if (!authToken || !authUser) {
+      setCartItems([]);
+      setWishlistAsins(new Set());
+      return;
+    }
+    Promise.all([
+      apiService.getCart(authToken),
+      apiService.getWishlist(authToken),
+      apiService.getOrders(authToken)
+    ])
+      .then(([cart, wishlist, orderHistory]) => {
+        applyCartResponse(cart);
+        setWishlistAsins(new Set(wishlist.items.map((item: UserProductList['items'][number]) => item.parent_asin)));
+        setWishlistProducts(wishlist.items.map((item) => mapFastApiProductToFrontend(item.product)));
+        setOrders(orderHistory);
+      })
+      .catch((error) => {
+        setDataError(error instanceof Error ? error.message : 'Unable to load your saved items');
+      });
+  }, [authToken, authUser]);
+
   useEffect(() => {
     if (!authUser) return;
     async function loadCatalogue() {
       const catalog = await apiService.getProducts({
-        page: 1,
+        page,
         pageSize: 48,
         search: searchQuery || undefined,
-        category: selectedCategory
+        category: selectedCategory,
+        minPrice: minPrice ? Number(minPrice) : undefined,
+        maxPrice: maxPrice ? Number(maxPrice) : undefined,
+        minRating: minRating ? Number(minRating) : undefined,
+        store: storeFilter || undefined,
+        sort: sortBy
       });
       setAllProducts(catalog.items.map(mapFastApiProductToFrontend));
+      setTotalProducts(catalog.total);
     }
-    loadCatalogue().catch(() => setAllProducts([]));
-  }, [authUser, searchQuery, selectedCategory]);
+    loadCatalogue().catch((error) => {
+      setAllProducts([]);
+      setDataError(error instanceof Error ? error.message : 'Unable to load products');
+    });
+    if (searchQuery.trim()) {
+      void apiService.recordEvent(
+        { event_type: 'search', search_query: searchQuery.trim() },
+        authToken as string
+      ).catch((error) => setDataError(error instanceof Error ? error.message : 'Unable to record search activity'));
+    } else if (selectedCategory !== 'All Departments') {
+      void apiService.recordEvent(
+        { event_type: 'category_view', category: selectedCategory },
+        authToken as string
+      ).catch((error) => setDataError(error instanceof Error ? error.message : 'Unable to record category activity'));
+    }
+  }, [authUser, searchQuery, selectedCategory, page, minPrice, maxPrice, minRating, storeFilter, sortBy]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedCategory, minPrice, maxPrice, minRating, storeFilter, sortBy]);
 
   useEffect(() => {
     if (!authUser) return;
@@ -98,6 +167,10 @@ export default function App() {
     apiService.getProductById(selectedAsin)
       .then((item) => setSelectedProduct(mapFastApiProductToFrontend(item)))
       .catch(() => undefined);
+    void apiService.recordEvent(
+      { event_type: 'product_view', parent_asin: selectedAsin },
+      authToken as string
+    ).catch((error) => setDataError(error instanceof Error ? error.message : 'Unable to record product activity'));
     apiService.getSimilarRecommendations([selectedAsin], 6)
       .then((items) => setSimilarRecommendations(items.map(mapFastApiProductToFrontend)))
       .catch(() => setSimilarRecommendations([]));
@@ -115,6 +188,123 @@ export default function App() {
       .catch(() => setCartRecommendations([]));
   }, [authUser, cartItems]);
 
+  useEffect(() => {
+    if (!authUser) {
+      setWishlistRecommendations([]);
+      return;
+    }
+    const wishlistSeeds = Array.from(wishlistAsins);
+    if (!wishlistSeeds.length) {
+      setWishlistRecommendations([]);
+      return;
+    }
+    apiService.getSimilarRecommendations(wishlistSeeds, 8)
+      .then((items) => setWishlistRecommendations(items.map(mapFastApiProductToFrontend)))
+      .catch(() => setWishlistRecommendations([]));
+  }, [authUser, wishlistAsins]);
+
+  // Helper to show toasts
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((current) => (current === msg ? null : current));
+    }, 3200);
+  };
+
+  // Cart operations
+  const handleAddToCart = async (product: Product, quantity = 1) => {
+    if (!authToken || !product.inStock || product.price <= 0) {
+      if (product.price <= 0) {
+        setDataError('This product is out of stock and can only be added to your wishlist');
+      }
+      return;
+    }
+    try {
+      applyCartResponse(await apiService.addCart(product.asin, quantity, authToken));
+      await apiService.recordEvent(
+        { event_type: 'cart_add', parent_asin: product.asin, metadata: { quantity } },
+        authToken
+      );
+      triggerToast(`Added "${product.title.slice(0, 32)}..." to your Cart`);
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : 'Unable to update your cart');
+    }
+  };
+
+  const handleUpdateQuantity = async (productId: string, quantity: number) => {
+    if (!authToken) return;
+    try {
+      applyCartResponse(await apiService.updateCart(productId, quantity, authToken));
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : 'Unable to update your cart');
+    }
+  };
+
+  const handleRemoveFromCart = async (productId: string) => {
+    if (!authToken) return;
+    try {
+      applyCartResponse(await apiService.removeCart(productId, authToken));
+      await apiService.recordEvent(
+        { event_type: 'cart_remove', parent_asin: productId },
+        authToken
+      );
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : 'Unable to remove the cart item');
+    }
+  };
+
+  const handleToggleWishlist = async (product: Product) => {
+    if (!authToken) return;
+    try {
+      const response = wishlistAsins.has(product.asin)
+        ? await apiService.removeWishlist(product.asin, authToken)
+        : await apiService.addWishlist(product.asin, authToken);
+      setWishlistAsins(new Set(response.items.map((item: UserProductList['items'][number]) => item.parent_asin)));
+      setWishlistProducts(response.items.map((item) => mapFastApiProductToFrontend(item.product)));
+      await apiService.recordEvent(
+        {
+          event_type: wishlistAsins.has(product.asin) ? 'wishlist_remove' : 'wishlist_add',
+          parent_asin: product.asin
+        },
+        authToken
+      );
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : 'Unable to update your wishlist');
+    }
+  };
+
+  // Dynamic ranking based on active user and selected recommendation mode
+  const rankedProducts = allProducts;
+
+  // Filtered catalog for main product grid
+  const filteredProducts = useMemo(() => {
+    return rankedProducts;
+  }, [rankedProducts]);
+
+  // Specialized recommendation rails
+  const personalizedRail = useMemo(() => {
+    return categoryRecommendations.length ? categoryRecommendations : globalRecommendations;
+  }, [categoryRecommendations, globalRecommendations]);
+
+  const bestSellingRail = useMemo(() => {
+    return globalRecommendations;
+  }, [globalRecommendations]);
+
+  const isBrowsingAll = selectedCategory === 'All Departments' && !searchQuery.trim();
+
+  const handleCheckout = async () => {
+    if (!authToken) return;
+    try {
+      await apiService.checkout(authToken);
+      setCartItems([]);
+      setOrders(await apiService.getOrders(authToken));
+      triggerToast('Simulated order completed successfully');
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : 'Unable to complete checkout');
+      throw error;
+    }
+  };
+
   if (!authReady) {
     return <div className="min-h-screen bg-white" />;
   }
@@ -130,102 +320,6 @@ export default function App() {
       />
     );
   }
-
-  // Helper to show toasts
-  const triggerToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage((current) => (current === msg ? null : current));
-    }, 3200);
-  };
-
-  // Cart operations
-  const handleAddToCart = (product: Product, quantity = 1) => {
-    setCartItems((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      }
-      return [...prev, { product, quantity }];
-    });
-
-    triggerToast(`Added "${product.title.slice(0, 32)}..." to your Cart`);
-  };
-
-  const handleUpdateQuantity = (productId: string, quantity: number) => {
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
-    );
-  };
-
-  const handleRemoveFromCart = (productId: string) => {
-    setCartItems((prev) => prev.filter((item) => item.product.id !== productId));
-  };
-
-  // Dynamic ranking based on active user and selected recommendation mode
-  const rankedProducts = useMemo(() => {
-    return [...allProducts].map((product) => {
-      let score = product.twoTowerEmbeddingSimilarity || 0.85;
-
-      return {
-        ...product,
-        dynamicScore: Math.min(score, 0.99)
-      };
-    }).sort((a, b) => b.dynamicScore - a.dynamicScore);
-  }, [allProducts]);
-
-  // Filtered catalog for main product grid
-  const filteredProducts = useMemo(() => {
-    let result = rankedProducts;
-
-    if (searchQuery.trim()) {
-      const terms = searchQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
-      result = result.filter((p) => {
-        const searchableText = `${p.title} ${p.brand} ${p.category} ${p.asin} ${p.features.join(' ')} ${p.description.join(' ')}`.toLowerCase();
-        return terms.every((t) => searchableText.includes(t));
-      });
-
-      if (selectedCategory !== 'All Departments') {
-        const inCategory = result.filter((p) => p.category === selectedCategory);
-        if (inCategory.length > 0) {
-          result = inCategory;
-        }
-      }
-    } else if (selectedCategory !== 'All Departments') {
-      result = result.filter((p) => p.category === selectedCategory);
-    }
-
-    if (primeOnly) {
-      result = result.filter((p) => p.isPrime);
-    }
-
-    if (sortBy === 'price-low') {
-      result = [...result].sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'price-high') {
-      result = [...result].sort((a, b) => b.price - a.price);
-    } else if (sortBy === 'rating') {
-      result = [...result].sort((a, b) => b.rating - a.rating);
-    }
-
-    return result;
-  }, [rankedProducts, selectedCategory, searchQuery, primeOnly, sortBy]);
-
-  // Specialized recommendation rails
-  const personalizedRail = useMemo(() => {
-    return categoryRecommendations.length ? categoryRecommendations : globalRecommendations;
-  }, [categoryRecommendations, globalRecommendations]);
-
-  const bestSellingRail = useMemo(() => {
-    return globalRecommendations;
-  }, [globalRecommendations]);
-
-  const isBrowsingAll = selectedCategory === 'All Departments' && !searchQuery.trim();
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans text-gray-900 selection:bg-[#db4444] selection:text-white">
@@ -244,17 +338,35 @@ export default function App() {
           </button>
         </div>
       )}
+      {dataError && (
+        <div className="fixed top-24 left-4 z-50 max-w-sm rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800 shadow-lg">
+          {dataError}
+          <button
+            className="ml-3 font-bold"
+            onClick={() => setDataError(null)}
+            aria-label="Dismiss error"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Header */}
       <Header
         cartItems={cartItems}
         onOpenCart={() => setIsCartOpen(true)}
+        onOpenWishlist={() => setIsWishlistOpen(true)}
+        onOpenOrders={() => setIsOrdersOpen(true)}
         user={authUser}
         onLogout={() => {
+          void apiService.logout(authToken).catch(() => undefined);
           localStorage.removeItem('recommendation_auth_token');
           setAuthToken(null);
           setAuthUser(null);
           setCartItems([]);
+          setWishlistAsins(new Set());
+          setWishlistProducts([]);
+          setOrders([]);
         }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -275,16 +387,10 @@ export default function App() {
       <main className="flex-1">
         {isBrowsingAll ? (
           <>
-            {/* Category Grid & Flash Products */}
+            {/* Category Grid */}
             <CategoryCardsGrid
-              products={rankedProducts}
-              onSelectProduct={setSelectedProduct}
               onSelectCategory={setSelectedCategory}
               categories={categories}
-              onAddToCart={(p, e) => {
-                e.stopPropagation();
-                handleAddToCart(p);
-              }}
             />
 
             {/* Best Selling Products & Personalized Rails */}
@@ -330,16 +436,6 @@ export default function App() {
 
                   {/* Filter Controls */}
                   <div className="flex items-center gap-3 text-xs">
-                    <label className="flex items-center gap-1.5 cursor-pointer text-gray-700">
-                      <input
-                        type="checkbox"
-                        checked={primeOnly}
-                        onChange={(e) => setPrimeOnly(e.target.checked)}
-                        className="rounded text-[#db4444]"
-                      />
-                      <span className="font-semibold text-black">Prime Delivery</span>
-                    </label>
-
                     <div className="flex items-center gap-1.5">
                       <span className="text-gray-500 font-medium">Sort by:</span>
                       <select
@@ -347,12 +443,17 @@ export default function App() {
                         onChange={(e) => setSortBy(e.target.value as any)}
                         className="border border-gray-200 rounded-md px-3 py-1.5 text-xs bg-white cursor-pointer font-medium outline-none focus:border-black"
                       >
-                        <option value="featured">Featured / RecSys Rank</option>
-                        <option value="price-low">Price: Low to High</option>
-                        <option value="price-high">Price: High to Low</option>
-                        <option value="rating">Avg. Customer Review</option>
+                        <option value="relevance">Relevance</option>
+                        <option value="price_asc">Price: Low to High</option>
+                        <option value="price_desc">Price: High to Low</option>
+                        <option value="rating_desc">Average Rating</option>
+                        <option value="popularity">Rating Count</option>
                       </select>
                     </div>
+                    <input value={minPrice} onChange={(e) => setMinPrice(e.target.value)} type="number" min="0" placeholder="Min $" className="w-20 border border-gray-200 rounded-md px-2 py-1.5" />
+                    <input value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} type="number" min="0" placeholder="Max $" className="w-20 border border-gray-200 rounded-md px-2 py-1.5" />
+                    <input value={minRating} onChange={(e) => setMinRating(e.target.value)} type="number" min="0" max="5" step="0.1" placeholder="Min ★" className="w-20 border border-gray-200 rounded-md px-2 py-1.5" />
+                    <input value={storeFilter} onChange={(e) => setStoreFilter(e.target.value)} type="text" placeholder="Brand/store" className="w-24 border border-gray-200 rounded-md px-2 py-1.5" />
                   </div>
                 </div>
 
@@ -366,6 +467,8 @@ export default function App() {
                         e.stopPropagation();
                         handleAddToCart(p);
                       }}
+                      isWishlisted={wishlistAsins.has(product.asin)}
+                      onToggleWishlist={handleToggleWishlist}
                     />
                   ))}
                 </div>
@@ -400,31 +503,26 @@ export default function App() {
                     </button>
                   </span>
                 )}
-                <span className="text-gray-400 font-mono">({filteredProducts.length} items)</span>
+                <span className="text-gray-400 font-mono">({totalProducts.toLocaleString()} items)</span>
               </div>
 
               {/* Sort & Filters */}
               <div className="flex items-center gap-3 text-xs">
-                <label className="flex items-center gap-1.5 cursor-pointer text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={primeOnly}
-                    onChange={(e) => setPrimeOnly(e.target.checked)}
-                    className="rounded text-[#db4444]"
-                  />
-                  <span>Prime Only</span>
-                </label>
-
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
                   className="border border-gray-200 rounded-md px-3 py-1.5 text-xs bg-white cursor-pointer font-medium outline-none"
                 >
-                  <option value="featured">Featured / RecSys Rank</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="rating">Avg. Customer Review</option>
+                  <option value="relevance">Relevance</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                  <option value="rating_desc">Average Rating</option>
+                  <option value="popularity">Rating Count</option>
                 </select>
+                <input value={minPrice} onChange={(e) => setMinPrice(e.target.value)} type="number" min="0" placeholder="Min $" className="w-20 border border-gray-200 rounded-md px-2 py-1.5" />
+                <input value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} type="number" min="0" placeholder="Max $" className="w-20 border border-gray-200 rounded-md px-2 py-1.5" />
+                <input value={minRating} onChange={(e) => setMinRating(e.target.value)} type="number" min="0" max="5" step="0.1" placeholder="Min ★" className="w-20 border border-gray-200 rounded-md px-2 py-1.5" />
+                <input value={storeFilter} onChange={(e) => setStoreFilter(e.target.value)} type="text" placeholder="Brand/store" className="w-24 border border-gray-200 rounded-md px-2 py-1.5" />
               </div>
             </div>
 
@@ -456,10 +554,31 @@ export default function App() {
                       e.stopPropagation();
                       handleAddToCart(p);
                     }}
+                    isWishlisted={wishlistAsins.has(product.asin)}
+                    onToggleWishlist={handleToggleWishlist}
                   />
                 ))}
               </div>
             )}
+          </div>
+        )}
+        {totalProducts > 48 && (
+          <div className="max-w-[1400px] mx-auto px-4 pb-10 flex items-center justify-center gap-4 text-sm">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              className="rounded border border-gray-200 px-4 py-2 disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <span>Page {page} of {Math.ceil(totalProducts / 48)}</span>
+            <button
+              disabled={page >= Math.ceil(totalProducts / 48)}
+              onClick={() => setPage((current) => current + 1)}
+              className="rounded border border-gray-200 px-4 py-2 disabled:opacity-40"
+            >
+              Next
+            </button>
           </div>
         )}
       </main>
@@ -482,8 +601,35 @@ export default function App() {
         onRemoveItem={handleRemoveFromCart}
         onSelectProduct={setSelectedProduct}
         onAddToCart={handleAddToCart}
-        onClearCart={() => setCartItems([])}
+        onClearCart={() => {
+          if (authToken) {
+            void Promise.all(cartItems.map((item) => apiService.removeCart(item.product.asin, authToken)))
+              .then(() => setCartItems([]))
+              .catch((error) => setDataError(error instanceof Error ? error.message : 'Unable to clear your cart'));
+          }
+        }}
+        onCheckout={handleCheckout}
         recommendationProducts={cartRecommendations}
+      />
+
+      <WishlistDrawer
+        isOpen={isWishlistOpen}
+        products={wishlistProducts}
+        recommendationProducts={wishlistRecommendations}
+        onClose={() => setIsWishlistOpen(false)}
+        onSelect={(product) => {
+          setSelectedProduct(product);
+          setIsWishlistOpen(false);
+        }}
+        onRemove={(product) => void handleToggleWishlist(product)}
+        onSelectProduct={setSelectedProduct}
+        onAddToCart={handleAddToCart}
+      />
+
+      <OrderHistoryDrawer
+        isOpen={isOrdersOpen}
+        orders={orders}
+        onClose={() => setIsOrdersOpen(false)}
       />
 
       <Footer />

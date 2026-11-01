@@ -14,6 +14,7 @@ def _path_from_env(name: str, default: str) -> Path:
 
 
 DB_PATH = _path_from_env("RECOMMENDATION_DB_PATH", "amazon_full.duckdb")
+SQLITE_PATH = _path_from_env("APPLICATION_SQLITE_PATH", "application.sqlite3")
 RANKINGS_PATH = _path_from_env(
     "RECOMMENDATION_RANKINGS_PATH",
     "experiments/global_rankings_clean.parquet",
