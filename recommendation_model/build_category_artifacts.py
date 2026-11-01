@@ -21,6 +21,7 @@ def build_category(
     output_dir: Path,
     top_k: int,
     chunk_size: int,
+    shrinkage: float,
 ) -> dict[str, int | float | str]:
     cutoff = connection.execute(
         """
@@ -68,6 +69,7 @@ def build_category(
     del train
 
     item_user = normalize(user_item.T.tocsr(), norm="l2", axis=1)
+    interaction_counts = np.asarray(user_item.sum(axis=0)).ravel()
     num_items = len(item_ids)
     capacity = num_items * top_k
     neighbor_rows = np.empty(capacity, dtype=np.int32)
@@ -86,6 +88,10 @@ def build_category(
             scores = row.data[valid]
             if not len(scores):
                 continue
+            overlaps = scores * np.sqrt(
+                interaction_counts[source] * interaction_counts[indices]
+            )
+            scores = scores * (overlaps / (overlaps + shrinkage))
             keep_count = min(top_k, len(scores))
             if len(scores) > keep_count:
                 selected = np.argpartition(scores, -keep_count)[-keep_count:]
@@ -118,6 +124,7 @@ def build_category(
         "products": num_items,
         "training_interactions": int(user_item.nnz),
         "links": int(neighbors.nnz),
+        "shrinkage": shrinkage,
     }
 
 
@@ -131,10 +138,16 @@ def main() -> None:
     )
     parser.add_argument("--top-k", type=int, default=100)
     parser.add_argument("--chunk-size", type=int, default=256)
+    parser.add_argument(
+        "--shrinkage",
+        type=float,
+        default=5.0,
+        help="Confidence-weighting constant for low-overlap neighbours.",
+    )
     parser.add_argument("--category", action="append")
     args = parser.parse_args()
-    if args.top_k < 1 or args.chunk_size < 1:
-        raise ValueError("--top-k and --chunk-size must be positive")
+    if args.top_k < 1 or args.chunk_size < 1 or args.shrinkage < 0:
+        raise ValueError("--top-k and --chunk-size must be positive; shrinkage cannot be negative")
 
     connection = duckdb.connect(args.db, read_only=True)
     try:
@@ -160,6 +173,7 @@ def main() -> None:
                     output_dir,
                     args.top_k,
                     args.chunk_size,
+                    args.shrinkage,
                 )
             )
         pd.DataFrame(manifest).to_json(

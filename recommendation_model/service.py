@@ -375,8 +375,36 @@ class RecommendationService:
             for asin, score in neighbors:
                 if asin not in excluded:
                     scores[asin] = scores.get(asin, 0.0) + score
-        ordered = sorted(scores, key=lambda asin: (-scores[asin], asin))[:limit]
-        return self._recommendation_products(ordered, scores)
+        candidate_metadata = self._metadata(list(scores))
+        seed_metadata = self._metadata(unique_seeds)
+        seed_categories = {
+            str(product.get("category") or "").lower()
+            for product in seed_metadata.values()
+        }
+        seed_stores = {
+            str(product.get("store") or "").strip().lower()
+            for product in seed_metadata.values()
+            if product.get("store")
+        }
+        reranked_scores: dict[str, float] = {}
+        for asin, score in scores.items():
+            product = candidate_metadata.get(asin)
+            if product is None:
+                continue
+            content_bonus = 0.0
+            if str(product.get("category") or "").lower() in seed_categories:
+                content_bonus += 0.10
+            if (
+                product.get("store")
+                and str(product["store"]).strip().lower() in seed_stores
+            ):
+                content_bonus += 0.15
+            reranked_scores[asin] = score + content_bonus
+        ordered = sorted(
+            reranked_scores,
+            key=lambda asin: (-reranked_scores[asin], asin),
+        )[:limit]
+        return self._recommendation_products(ordered, reranked_scores)
 
     def _dynamic_neighbors_for(
         self, seed: str, category: str | None = None
@@ -432,8 +460,13 @@ class RecommendationService:
                     GROUP BY parent_asin
                 )
                 SELECT candidate_counts.parent_asin,
-                       candidate_counts.candidate_count
-                       / SQRT(? * all_counts.total_count) AS similarity
+                       (
+                           candidate_counts.candidate_count
+                           / SQRT(? * all_counts.total_count)
+                       ) * (
+                           candidate_counts.candidate_count
+                           / (candidate_counts.candidate_count + 5.0)
+                       ) AS similarity
                 FROM candidate_counts
                 JOIN all_counts USING (parent_asin)
                 WHERE candidate_counts.parent_asin <> ?
@@ -496,6 +529,16 @@ class RecommendationService:
         if not purchased and not terms and not categories:
             return []
 
+        anchor_asins = list(dict.fromkeys(list(purchased) + viewed_asins))
+        collaborative_scores: dict[str, float] = {}
+        if anchor_asins:
+            for product in self.similar(anchor_asins, min(100, max(limit * 10, 20))):
+                asin = product["parent_asin"]
+                if asin not in purchased:
+                    collaborative_scores[asin] = float(
+                        product.get("recommendation_score") or 0
+                    )
+
         terms = [(term, weight) for term, weight in terms if len(term) >= 3]
         terms = list(dict.fromkeys(terms))[:40]
         categories = list(dict.fromkeys(categories))[:10]
@@ -534,7 +577,7 @@ class RecommendationService:
         finally:
             connection.close()
 
-        scored: list[tuple[str, float]] = []
+        scored: dict[str, float] = {}
         for _, row in rows.iterrows():
             product = self._row_to_product(row.to_dict())
             searchable = " ".join(
@@ -547,11 +590,14 @@ class RecommendationService:
                 if normalized in str(product["category"]).lower().replace(" ", "_"):
                     score += 2.0 * weight
             if score > 0:
-                scored.append((product["parent_asin"], score))
+                scored[product["parent_asin"]] = score
 
-        scored.sort(key=lambda item: (-item[1], item[0]))
-        selected = scored[:limit]
+        for asin, score in collaborative_scores.items():
+            scored[asin] = scored.get(asin, 0.0) + 3.0 * score
+
+        ordered = sorted(scored, key=lambda asin: (-scored[asin], asin))
+        selected = ordered[:limit]
         return self._recommendation_products(
-            [asin for asin, _ in selected],
-            dict(selected),
+            selected,
+            scored,
         )
