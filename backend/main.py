@@ -9,7 +9,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from .config import DB_PATH, GRAPH_PATH, ITEM_IDS_PATH, RANKINGS_PATH, SQLITE_PATH
+from .config import (
+    CATEGORY_ARTIFACTS_PATH,
+    DB_PATH,
+    GRAPH_PATH,
+    ITEM_IDS_PATH,
+    RANKINGS_PATH,
+    SQLITE_PATH,
+)
 from .auth import AuthService, DuplicateEmailError
 from .database import SQLiteDatabase
 from .user_data import UserDataService
@@ -32,7 +39,11 @@ async def lifespan(_: FastAPI):
     sqlite_database = SQLiteDatabase(SQLITE_PATH)
     auth_service = AuthService(sqlite_database)
     service = RecommendationService(
-        str(DB_PATH), str(RANKINGS_PATH), str(GRAPH_PATH), str(ITEM_IDS_PATH)
+        str(DB_PATH),
+        str(RANKINGS_PATH),
+        str(GRAPH_PATH),
+        str(ITEM_IDS_PATH),
+        str(CATEGORY_ARTIFACTS_PATH),
     )
     user_data_service = UserDataService(sqlite_database, service)
     activity_service = ActivityService(sqlite_database)

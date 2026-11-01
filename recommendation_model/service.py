@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 import re
 from typing import Any
 
@@ -28,8 +29,12 @@ class RecommendationService:
         rankings_path: str,
         graph_path: str,
         item_ids_path: str,
+        category_artifacts_path: str | None = None,
     ) -> None:
         self.db_path = db_path
+        self.category_artifacts_path = (
+            Path(category_artifacts_path) if category_artifacts_path else None
+        )
         self.rankings = pd.read_parquet(rankings_path)
         self.graph: csr_matrix = load_npz(graph_path).tocsr()
         self.item_ids = np.load(item_ids_path, allow_pickle=True).astype(str)
@@ -42,6 +47,11 @@ class RecommendationService:
         self.item_index = {
             asin: index for index, asin in enumerate(self.item_ids)
         }
+        self._category_graphs: dict[
+            str, tuple[csr_matrix, np.ndarray, dict[str, int]]
+        ] = {}
+        self._asin_categories: dict[str, str | None] = {}
+        self._dynamic_neighbors: dict[str, list[tuple[str, float]]] = {}
 
     def _connect(self) -> duckdb.DuckDBPyConnection:
         return duckdb.connect(self.db_path, read_only=True)
@@ -120,6 +130,57 @@ class RecommendationService:
             str(row["parent_asin"]): self._row_to_product(row.to_dict())
             for _, row in rows.iterrows()
         }
+
+    @staticmethod
+    def _category_artifact_name(category: str) -> str:
+        return re.sub(r"[^A-Za-z0-9._-]+", "_", category.strip())
+
+    def _categories_for(self, asins: list[str]) -> dict[str, str | None]:
+        missing = [asin for asin in asins if asin not in self._asin_categories]
+        if missing:
+            placeholders = ",".join("?" for _ in missing)
+            connection = self._connect()
+            try:
+                rows = connection.execute(
+                    f"""
+                    SELECT parent_asin, source_category
+                    FROM products
+                    WHERE parent_asin IN ({placeholders})
+                    """,
+                    missing,
+                ).fetchall()
+            finally:
+                connection.close()
+            found = {str(asin): category for asin, category in rows}
+            self._asin_categories.update(
+                {asin: found.get(asin) for asin in missing}
+            )
+        return {asin: self._asin_categories.get(asin) for asin in asins}
+
+    def _category_graph(
+        self, category: str
+    ) -> tuple[csr_matrix, np.ndarray, dict[str, int]] | None:
+        if self.category_artifacts_path is None:
+            return None
+        cached = self._category_graphs.get(category)
+        if cached is not None:
+            return cached
+        directory = self.category_artifacts_path / self._category_artifact_name(category)
+        graph_path = directory / "item_neighbors.npz"
+        item_ids_path = directory / "item_ids.npy"
+        if not graph_path.is_file() or not item_ids_path.is_file():
+            return None
+        item_ids = np.load(item_ids_path, allow_pickle=True).astype(str)
+        graph = load_npz(graph_path).tocsr()
+        expected_shape = (len(item_ids), len(item_ids))
+        if graph.shape != expected_shape:
+            raise ValueError(
+                f"Category graph {category!r} has shape {graph.shape}; "
+                f"expected {expected_shape}"
+            )
+        loaded = (graph, item_ids, {asin: i for i, asin in enumerate(item_ids)})
+        self._category_graphs[category] = loaded
+        return loaded
 
     def _rating_distribution(self, parent_asin: str) -> dict[str, int]:
         connection = self._connect()
@@ -281,19 +342,111 @@ class RecommendationService:
 
     def similar(self, seeds: list[str], limit: int) -> list[dict[str, Any]]:
         unique_seeds = list(dict.fromkeys(str(seed) for seed in seeds))
-        indices = [self.item_index[seed] for seed in unique_seeds if seed in self.item_index]
-        if not indices:
+        if not unique_seeds:
             return []
-        excluded = {str(self.item_ids[index]) for index in indices}
+        excluded = set(unique_seeds)
         scores: dict[str, float] = {}
-        for index in indices:
-            row = self.graph.getrow(index)
-            for target, score in zip(row.indices, row.data):
-                asin = str(self.item_ids[target])
+        categories = self._categories_for(unique_seeds)
+        for seed in unique_seeds:
+            category_graph = (
+                self._category_graph(categories[seed])
+                if categories[seed]
+                else None
+            )
+            if category_graph and seed in category_graph[2]:
+                graph, item_ids, item_index = category_graph
+                row = graph.getrow(item_index[seed])
+                neighbors = (
+                    (str(item_ids[target]), float(score))
+                    for target, score in zip(row.indices, row.data)
+                )
+            elif categories[seed] is not None:
+                neighbors = iter(
+                    self._dynamic_neighbors_for(seed, categories[seed])
+                )
+            elif seed in self.item_index:
+                row = self.graph.getrow(self.item_index[seed])
+                neighbors = (
+                    (str(self.item_ids[target]), float(score))
+                    for target, score in zip(row.indices, row.data)
+                )
+            else:
+                neighbors = iter(self._dynamic_neighbors_for(seed))
+            for asin, score in neighbors:
                 if asin not in excluded:
-                    scores[asin] = scores.get(asin, 0.0) + float(score)
+                    scores[asin] = scores.get(asin, 0.0) + score
         ordered = sorted(scores, key=lambda asin: (-scores[asin], asin))[:limit]
         return self._recommendation_products(ordered, scores)
+
+    def _dynamic_neighbors_for(
+        self, seed: str, category: str | None = None
+    ) -> list[tuple[str, float]]:
+        cache_key = f"{category}\x00{seed}"
+        cached = self._dynamic_neighbors.get(cache_key)
+        if cached is not None:
+            return cached
+        connection = self._connect()
+        try:
+            category_filter = ""
+            category_params: list[Any] = []
+            if category is not None:
+                category_filter = """
+                    AND EXISTS (
+                        SELECT 1
+                        FROM products AS category_products
+                        WHERE category_products.parent_asin = ratings.parent_asin
+                          AND category_products.source_category = ?
+                    )
+                """
+                category_params.append(category)
+            seed_count = connection.execute(
+                f"""
+                SELECT COUNT(DISTINCT user_id)
+                FROM ratings
+                WHERE parent_asin = ? AND rating BETWEEN 4 AND 5
+                """,
+                [seed],
+            ).fetchone()[0]
+            if not seed_count:
+                self._dynamic_neighbors[cache_key] = []
+                return []
+            rows = connection.execute(
+                f"""
+                WITH seed_users AS (
+                    SELECT DISTINCT user_id
+                    FROM ratings
+                    WHERE parent_asin = ? AND rating BETWEEN 4 AND 5
+                ),
+                candidate_counts AS (
+                    SELECT parent_asin, COUNT(DISTINCT user_id) AS candidate_count
+                    FROM ratings
+                    WHERE rating BETWEEN 4 AND 5
+                      AND user_id IN (SELECT user_id FROM seed_users)
+                      {category_filter}
+                    GROUP BY parent_asin
+                ),
+                all_counts AS (
+                    SELECT parent_asin, COUNT(DISTINCT user_id) AS total_count
+                    FROM ratings
+                    WHERE rating BETWEEN 4 AND 5
+                    GROUP BY parent_asin
+                )
+                SELECT candidate_counts.parent_asin,
+                       candidate_counts.candidate_count
+                       / SQRT(? * all_counts.total_count) AS similarity
+                FROM candidate_counts
+                JOIN all_counts USING (parent_asin)
+                WHERE candidate_counts.parent_asin <> ?
+                ORDER BY similarity DESC, candidate_counts.parent_asin
+                LIMIT 100
+                """,
+                [seed, *category_params, float(seed_count), seed],
+            ).fetchall()
+        finally:
+            connection.close()
+        result = [(str(asin), float(score)) for asin, score in rows]
+        self._dynamic_neighbors[cache_key] = result
+        return result
 
     @staticmethod
     def _event_weight(event: dict[str, Any], now: datetime) -> float:

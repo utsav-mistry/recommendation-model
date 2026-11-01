@@ -7,7 +7,8 @@ import {
   ShieldCheck, 
   ArrowRight, 
   ShoppingBag,
-  Sparkles
+  Sparkles,
+  Heart
 } from 'lucide-react';
 
 interface CartDrawerProps {
@@ -21,6 +22,8 @@ interface CartDrawerProps {
   onClearCart?: () => void;
   onCheckout: () => Promise<void>;
   recommendationProducts?: Product[];
+  isWishlisted?: (product: Product) => boolean;
+  onToggleWishlist?: (product: Product) => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -33,7 +36,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onAddToCart,
   onClearCart,
   onCheckout,
-  recommendationProducts = []
+  recommendationProducts = [],
+  isWishlisted,
+  onToggleWishlist
 }) => {
   const [orderComplete, setOrderComplete] = useState(false);
   const [checkoutPending, setCheckoutPending] = useState(false);
@@ -52,7 +57,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const cartAsins = cartItems.map((item) => item.product.asin);
   const impulseRecs = recommendationProducts
     .filter((p) => !cartAsins.includes(p.asin))
-    .slice(0, 2);
+    .slice(0, 10);
 
   const handleCheckout = async () => {
     setCheckoutPending(true);
@@ -190,6 +195,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
+                        {onToggleWishlist && (
+                          <button
+                            onClick={() => onToggleWishlist(item.product)}
+                            className="text-gray-400 hover:text-[#db4444] p-1 cursor-pointer"
+                            title={isWishlisted?.(item.product) ? 'Remove from wishlist' : 'Add to wishlist'}
+                            aria-label={isWishlisted?.(item.product) ? 'Remove from wishlist' : 'Add to wishlist'}
+                          >
+                            <Heart className={`w-3.5 h-3.5 ${isWishlisted?.(item.product) ? 'fill-[#db4444] text-[#db4444]' : ''}`} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -220,6 +235,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         >
                           {rec.inStock ? '+ Add' : 'Out of stock'}
                         </button>
+                        {onToggleWishlist && (
+                          <button
+                            onClick={() => onToggleWishlist(rec)}
+                            className="shrink-0 text-gray-400 hover:text-[#db4444] p-1 cursor-pointer"
+                            title={isWishlisted?.(rec) ? 'Remove from wishlist' : 'Add to wishlist'}
+                            aria-label={isWishlisted?.(rec) ? 'Remove from wishlist' : 'Add to wishlist'}
+                          >
+                            <Heart className={`w-4 h-4 ${isWishlisted?.(rec) ? 'fill-[#db4444] text-[#db4444]' : ''}`} />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -203,7 +203,7 @@ export default function App() {
       authToken as string
     ).then(() => setHistoryVersion((version) => version + 1))
       .catch((error) => setDataError(error instanceof Error ? error.message : 'Unable to record product activity'));
-    apiService.getSimilarRecommendations([selectedAsin], 6)
+    apiService.getSimilarRecommendations([selectedAsin], 10)
       .then((items) => setSimilarRecommendations(items.map(mapFastApiProductToFrontend)))
       .catch(() => setSimilarRecommendations([]));
   }, [authUser, selectedAsin]);
@@ -215,7 +215,7 @@ export default function App() {
       setCartRecommendations([]);
       return;
     }
-    apiService.getSimilarRecommendations(cartAsins, 6)
+    apiService.getSimilarRecommendations(cartAsins, 10)
       .then((items) => setCartRecommendations(items.map(mapFastApiProductToFrontend)))
       .catch(() => setCartRecommendations([]));
   }, [authUser, cartItems]);
@@ -230,7 +230,7 @@ export default function App() {
       setWishlistRecommendations([]);
       return;
     }
-    apiService.getSimilarRecommendations(wishlistSeeds, 8)
+    apiService.getSimilarRecommendations(wishlistSeeds, 10)
       .then((items) => setWishlistRecommendations(items.map(mapFastApiProductToFrontend)))
       .catch(() => setWishlistRecommendations([]));
   }, [authUser, wishlistAsins]);
@@ -667,6 +667,8 @@ export default function App() {
         }}
         onCheckout={handleCheckout}
         recommendationProducts={cartRecommendations}
+        isWishlisted={(product) => wishlistAsins.has(product.asin)}
+        onToggleWishlist={handleToggleWishlist}
       />
 
       <WishlistDrawer

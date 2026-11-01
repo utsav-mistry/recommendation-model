@@ -44,6 +44,7 @@ APPLICATION_SQLITE_PATH=application.sqlite3
 RECOMMENDATION_RANKINGS_PATH=recommendation_model/artifacts/global_rankings.parquet
 RECOMMENDATION_GRAPH_PATH=recommendation_model/artifacts/item_neighbors.npz
 RECOMMENDATION_ITEM_IDS_PATH=recommendation_model/artifacts/item_ids.npy
+RECOMMENDATION_CATEGORY_ARTIFACTS_PATH=recommendation_model/artifacts/categories
 AUTH_TOKEN_SECRET=change-this-in-production
 ```
 
@@ -65,6 +66,21 @@ runtime. The React frontend uses
 `VITE_FASTAPI_API_URL`, defaulting to
 `http://localhost:8000`. Spring Boot source remains in the repository for
 future integration but is not required to run the current application.
+
+Category-sharded item graphs for all 25 catalogue categories can be generated
+with:
+
+```text
+python -m recommendation_model.build_category_artifacts
+```
+
+The builder follows the validated experiment pipeline: positive ratings,
+category-specific 80/20 chronological split, training-only interactions,
+chunked cosine similarity, and top-100 neighbours. The service loads a
+matching category graph lazily when available, then falls back to the
+validated global graph and finally the dynamic read-only similarity fallback
+for uncovered products. Best Selling continues to use the global
+rankings artifact.
 
 Authenticated application endpoints include `/api/wishlist`, `/api/cart`,
 `/api/events`, `/api/orders`, and `/api/orders/checkout`. Checkout is a

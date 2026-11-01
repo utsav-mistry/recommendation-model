@@ -27,3 +27,7 @@ ITEM_IDS_PATH = _path_from_env(
     "RECOMMENDATION_ITEM_IDS_PATH",
     "recommendation_model/artifacts/item_ids.npy",
 )
+CATEGORY_ARTIFACTS_PATH = _path_from_env(
+    "RECOMMENDATION_CATEGORY_ARTIFACTS_PATH",
+    "recommendation_model/artifacts/categories",
+)
