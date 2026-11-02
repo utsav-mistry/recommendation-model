@@ -8,7 +8,9 @@ import {
   ArrowRight, 
   ShoppingBag,
   Sparkles,
-  Heart
+  Heart,
+  Minus,
+  Plus
 } from 'lucide-react';
 
 interface CartDrawerProps {
@@ -80,7 +82,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white p-1 rounded transition cursor-pointer"
+            className="w-9 h-9 inline-flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-full transition cursor-pointer"
             aria-label="Close cart"
           >
             <X className="w-5 h-5" />
@@ -148,11 +150,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               {/* Cart Items List */}
               <div className="bg-white rounded-md border border-gray-200 divide-y divide-gray-100">
                 {cartItems.map((item) => (
-                  <div key={item.product.id} className="p-3.5 flex gap-3">
+                  <div key={item.product.id} className="p-4 flex gap-3.5">
                     <img
                       src={item.product.image}
                       alt={item.product.title}
-                      className="w-16 h-16 object-contain bg-[#f5f5f5] rounded p-1 cursor-pointer shrink-0"
+                      className="w-[72px] h-[72px] object-contain bg-[#f5f5f5] rounded-lg p-1 cursor-pointer shrink-0"
                       onClick={() => {
                         onSelectProduct(item.product);
                         onClose();
@@ -169,42 +171,55 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         {item.product.title}
                       </h4>
                       <p className="text-[11px] text-gray-500">{item.product.category}</p>
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="text-xs font-bold text-gray-900">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+                        <span className="text-sm font-bold text-gray-900">
                           ${(item.product.price * item.quantity).toFixed(2)}
                         </span>
-                        <div className="flex items-center border border-gray-200 rounded">
+                        <div className="flex items-center gap-2">
+                          <div className="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 p-0.5 shadow-sm">
+                            <button
+                              onClick={() => onUpdateQuantity(item.product.id, Math.max(1, item.quantity - 1))}
+                              disabled={item.quantity <= 1}
+                              className="w-7 h-7 inline-flex items-center justify-center rounded-md text-gray-600 hover:bg-white hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#db4444] disabled:text-gray-300 disabled:hover:bg-transparent disabled:cursor-not-allowed cursor-pointer transition"
+                              aria-label={`Decrease quantity of ${item.product.title}`}
+                            >
+                              <Minus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                            </button>
+                            <span className="min-w-7 text-center text-xs font-bold text-gray-900" aria-label={`Quantity: ${item.quantity}`}>
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
+                              className="w-7 h-7 inline-flex items-center justify-center rounded-md text-gray-600 hover:bg-white hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#db4444] cursor-pointer transition"
+                              aria-label={`Increase quantity of ${item.product.title}`}
+                            >
+                              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                            </button>
+                          </div>
                           <button
-                            onClick={() => onUpdateQuantity(item.product.id, Math.max(1, item.quantity - 1))}
-                            className="px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100 cursor-pointer"
+                            onClick={() => onRemoveItem(item.product.id)}
+                            className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 cursor-pointer transition"
+                            title="Remove from cart"
+                            aria-label={`Remove ${item.product.title} from cart`}
                           >
-                            -
+                            <Trash2 className="w-4 h-4" />
                           </button>
-                          <span className="px-2 text-xs font-medium">{item.quantity}</span>
-                          <button
-                            onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                            className="px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100 cursor-pointer"
-                          >
-                            +
-                          </button>
+                          {onToggleWishlist && (
+                            <button
+                              onClick={() => onToggleWishlist(item.product)}
+                              className={`w-8 h-8 inline-flex items-center justify-center rounded-lg border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#db4444] cursor-pointer transition ${
+                                isWishlisted?.(item.product)
+                                  ? 'border-rose-200 bg-rose-50 text-[#db4444]'
+                                  : 'border-gray-200 text-gray-400 hover:border-rose-200 hover:bg-rose-50 hover:text-[#db4444]'
+                              }`}
+                              title={isWishlisted?.(item.product) ? 'Remove from wishlist' : 'Add to wishlist'}
+                              aria-label={isWishlisted?.(item.product) ? 'Remove from wishlist' : 'Add to wishlist'}
+                              aria-pressed={isWishlisted?.(item.product)}
+                            >
+                              <Heart className={`w-4 h-4 ${isWishlisted?.(item.product) ? 'fill-[#db4444]' : ''}`} />
+                            </button>
+                          )}
                         </div>
-                        <button
-                          onClick={() => onRemoveItem(item.product.id)}
-                          className="text-gray-400 hover:text-rose-600 p-1 cursor-pointer"
-                          title="Remove item"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                        {onToggleWishlist && (
-                          <button
-                            onClick={() => onToggleWishlist(item.product)}
-                            className="text-gray-400 hover:text-[#db4444] p-1 cursor-pointer"
-                            title={isWishlisted?.(item.product) ? 'Remove from wishlist' : 'Add to wishlist'}
-                            aria-label={isWishlisted?.(item.product) ? 'Remove from wishlist' : 'Add to wishlist'}
-                          >
-                            <Heart className={`w-3.5 h-3.5 ${isWishlisted?.(item.product) ? 'fill-[#db4444] text-[#db4444]' : ''}`} />
-                          </button>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -220,31 +235,38 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   </div>
                   <div className="space-y-2">
                     {impulseRecs.map((rec) => (
-                      <div key={rec.id} className="flex items-center justify-between gap-2 p-2 bg-[#f8f9fa] rounded text-xs">
+                      <div key={rec.id} className="flex items-center gap-2 p-2 bg-[#f8f9fa] rounded text-xs">
                         <div className="flex items-center gap-2 min-w-0">
                           <img src={rec.image} alt={rec.title} className="w-8 h-8 object-contain rounded" />
-                          <div className="truncate">
+                          <div className="min-w-0 truncate">
                             <p className="font-medium text-gray-900 truncate">{rec.title}</p>
                             <p className="text-[11px] font-bold text-[#b12704]">${rec.price.toFixed(2)}</p>
                           </div>
                         </div>
-                        <button
-                          onClick={() => onAddToCart(rec)}
-                          disabled={!rec.inStock}
-                          className="shrink-0 bg-[#ffd814] hover:bg-[#f7ca00] text-gray-900 text-[11px] font-semibold px-2.5 py-1 rounded cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed"
-                        >
-                          {rec.inStock ? '+ Add' : 'Out of stock'}
-                        </button>
-                        {onToggleWishlist && (
+                        <div className="ml-auto flex shrink-0 items-center gap-1.5">
                           <button
-                            onClick={() => onToggleWishlist(rec)}
-                            className="shrink-0 text-gray-400 hover:text-[#db4444] p-1 cursor-pointer"
-                            title={isWishlisted?.(rec) ? 'Remove from wishlist' : 'Add to wishlist'}
-                            aria-label={isWishlisted?.(rec) ? 'Remove from wishlist' : 'Add to wishlist'}
+                            onClick={() => onAddToCart(rec)}
+                            disabled={!rec.inStock}
+                            className="w-24 min-h-8 inline-flex items-center justify-center rounded-md bg-[#ffd814] px-2 text-[10px] font-bold leading-tight text-gray-900 transition hover:bg-[#f7ca00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer"
                           >
-                            <Heart className={`w-4 h-4 ${isWishlisted?.(rec) ? 'fill-[#db4444] text-[#db4444]' : ''}`} />
+                            {rec.inStock ? '+ Add to cart' : 'Out of stock'}
                           </button>
-                        )}
+                          {onToggleWishlist && (
+                            <button
+                              onClick={() => onToggleWishlist(rec)}
+                              className={`w-8 h-8 shrink-0 inline-flex items-center justify-center rounded-lg border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#db4444] cursor-pointer transition ${
+                                isWishlisted?.(rec)
+                                  ? 'border-rose-200 bg-rose-50 text-[#db4444]'
+                                  : 'border-gray-200 bg-white text-gray-400 hover:border-rose-200 hover:text-[#db4444]'
+                              }`}
+                              title={isWishlisted?.(rec) ? 'Remove from wishlist' : 'Add to wishlist'}
+                              aria-label={isWishlisted?.(rec) ? 'Remove from wishlist' : 'Add to wishlist'}
+                              aria-pressed={isWishlisted?.(rec)}
+                            >
+                              <Heart className={`w-4 h-4 ${isWishlisted?.(rec) ? 'fill-[#db4444]' : ''}`} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

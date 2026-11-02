@@ -5,7 +5,8 @@ import {
   X, 
   Star, 
   ShoppingCart, 
-  Plus
+  Plus,
+  Heart
 } from 'lucide-react';
 
 interface ProductDetailModalProps {
@@ -14,6 +15,8 @@ interface ProductDetailModalProps {
   onAddToCart: (product: Product, quantity?: number) => void;
   onSelectProduct: (product: Product) => void;
   similarProducts?: Product[];
+  isWishlisted?: boolean;
+  onToggleWishlist?: (product: Product) => void;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -21,7 +24,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onClose,
   onAddToCart,
   onSelectProduct,
-  similarProducts = []
+  similarProducts = [],
+  isWishlisted = false,
+  onToggleWishlist
 }) => {
   const [selectedImage, setSelectedImage] = useState(product?.image || '');
   const [quantity, setQuantity] = useState(1);
@@ -244,6 +249,20 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     <ShoppingCart className="w-4 h-4" />
                     <span>{product.inStock ? 'Add to Cart' : 'Out of Stock'}</span>
                   </button>
+                  {onToggleWishlist && (
+                    <button
+                      onClick={() => onToggleWishlist(product)}
+                      className={`w-full inline-flex items-center justify-center gap-2 rounded-md border py-2.5 px-4 text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#db4444] ${
+                        isWishlisted
+                          ? 'border-rose-200 bg-rose-50 text-[#db4444] hover:bg-rose-100'
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-rose-300 hover:bg-rose-50 hover:text-[#db4444]'
+                      }`}
+                      aria-pressed={isWishlisted}
+                    >
+                      <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-[#db4444]' : ''}`} />
+                      <span>{isWishlisted ? 'Saved to Wishlist' : 'Add to Wishlist'}</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Details */}

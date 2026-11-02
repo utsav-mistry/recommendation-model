@@ -15,6 +15,53 @@ import { WishlistDrawer } from './components/WishlistDrawer';
 import { OrderHistoryDrawer } from './components/OrderHistoryDrawer';
 import { Check } from 'lucide-react';
 
+const RECOMMENDATION_LIMIT = 10;
+
+async function getBalancedRecommendations(
+  seedProducts: Array<Pick<Product, 'asin' | 'category'>>,
+  limit = RECOMMENDATION_LIMIT
+): Promise<Product[]> {
+  const categorySeeds = new Map<string, Set<string>>();
+  for (const product of seedProducts) {
+    const category = product.category || 'Other';
+    const seeds = categorySeeds.get(category) || new Set<string>();
+    seeds.add(product.asin);
+    categorySeeds.set(category, seeds);
+  }
+
+  const categories = Array.from(categorySeeds.keys());
+  if (!categories.length) return [];
+
+  const baseQuota = Math.floor(limit / categories.length);
+  const remainder = limit % categories.length;
+  const categoryResults = await Promise.all(categories.map(async (category, index) => {
+    const quota = baseQuota + (index < remainder ? 1 : 0);
+    const items = await apiService.getSimilarRecommendations(
+      Array.from(categorySeeds.get(category) || []),
+      Math.max(quota, 5)
+    );
+    return {
+      quota,
+      products: items.map(mapFastApiProductToFrontend)
+    };
+  }));
+
+  const seedAsins = new Set(seedProducts.map((product) => product.asin));
+  const seenAsins = new Set(seedAsins);
+  const balancedProducts: Product[] = [];
+  for (const { quota, products } of categoryResults) {
+    let added = 0;
+    for (const product of products) {
+      if (seenAsins.has(product.asin)) continue;
+      seenAsins.add(product.asin);
+      balancedProducts.push(product);
+      added += 1;
+      if (added === quota) break;
+    }
+  }
+  return balancedProducts;
+}
+
 export default function App() {
   const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem('recommendation_auth_token'));
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -48,6 +95,7 @@ export default function App() {
   const [similarRecommendations, setSimilarRecommendations] = useState<Product[]>([]);
   const [cartRecommendations, setCartRecommendations] = useState<Product[]>([]);
   const [wishlistRecommendations, setWishlistRecommendations] = useState<Product[]>([]);
+  const [contextualRecommendations, setContextualRecommendations] = useState<Product[]>([]);
   const [personalizedRecommendations, setPersonalizedRecommendations] = useState<Product[]>([]);
   const [recentlyViewedProducts, setRecentlyViewedProducts] = useState<Product[]>([]);
   const [historyVersion, setHistoryVersion] = useState(0);
@@ -210,13 +258,12 @@ export default function App() {
 
   useEffect(() => {
     if (!authUser) return;
-    const cartAsins = cartItems.map((item) => item.product.asin);
-    if (!cartAsins.length) {
+    if (!cartItems.length) {
       setCartRecommendations([]);
       return;
     }
-    apiService.getSimilarRecommendations(cartAsins, 10)
-      .then((items) => setCartRecommendations(items.map(mapFastApiProductToFrontend)))
+    getBalancedRecommendations(cartItems.map((item) => item.product))
+      .then(setCartRecommendations)
       .catch(() => setCartRecommendations([]));
   }, [authUser, cartItems]);
 
@@ -225,15 +272,34 @@ export default function App() {
       setWishlistRecommendations([]);
       return;
     }
-    const wishlistSeeds = Array.from(wishlistAsins);
-    if (!wishlistSeeds.length) {
+    if (!wishlistProducts.length) {
       setWishlistRecommendations([]);
       return;
     }
-    apiService.getSimilarRecommendations(wishlistSeeds, 10)
-      .then((items) => setWishlistRecommendations(items.map(mapFastApiProductToFrontend)))
+    getBalancedRecommendations(wishlistProducts)
+      .then(setWishlistRecommendations)
       .catch(() => setWishlistRecommendations([]));
-  }, [authUser, wishlistAsins]);
+  }, [authUser, wishlistProducts]);
+
+  useEffect(() => {
+    if (!authUser) {
+      setContextualRecommendations([]);
+      return;
+    }
+
+    const seedProducts = [
+      ...cartItems.map((item) => item.product),
+      ...wishlistProducts
+    ];
+    if (!seedProducts.length) {
+      setContextualRecommendations([]);
+      return;
+    }
+
+    getBalancedRecommendations(seedProducts)
+      .then(setContextualRecommendations)
+      .catch(() => setContextualRecommendations([]));
+  }, [authUser, cartItems, wishlistProducts]);
 
   // Helper to show toasts
   const triggerToast = (msg: string) => {
@@ -315,8 +381,10 @@ export default function App() {
 
   // Specialized recommendation rails
   const personalizedRail = useMemo(() => {
-    return personalizedRecommendations;
-  }, [personalizedRecommendations]);
+    return contextualRecommendations.length > 0
+      ? contextualRecommendations
+      : personalizedRecommendations;
+  }, [contextualRecommendations, personalizedRecommendations]);
 
   const bestSellingRail = useMemo(() => {
     return globalRecommendations;
@@ -439,6 +507,8 @@ export default function App() {
                   e.stopPropagation();
                   handleAddToCart(p);
                 }}
+                isWishlisted={(product) => wishlistAsins.has(product.asin)}
+                onToggleWishlist={handleToggleWishlist}
               />
 
               {recentlyViewedProducts.length > 0 && (
@@ -451,6 +521,8 @@ export default function App() {
                     e.stopPropagation();
                     handleAddToCart(p);
                   }}
+                  isWishlisted={(product) => wishlistAsins.has(product.asin)}
+                  onToggleWishlist={handleToggleWishlist}
                 />
               )}
 
@@ -458,14 +530,16 @@ export default function App() {
               {personalizedRail.length > 0 ? (
                 <RecommendationRail
                   title="Recommended For You"
-                  subtitle="Based on your activity"
-                  algorithmBadge="Personalized"
+                  subtitle={contextualRecommendations.length > 0 ? 'Based on your cart and wishlist' : 'Based on your activity'}
+                  algorithmBadge={contextualRecommendations.length > 0 ? 'Cart + Wishlist' : 'Personalized'}
                   products={personalizedRail}
                   onSelectProduct={setSelectedProduct}
                   onAddToCart={(p, e) => {
                     e.stopPropagation();
                     handleAddToCart(p);
                   }}
+                  isWishlisted={(product) => wishlistAsins.has(product.asin)}
+                  onToggleWishlist={handleToggleWishlist}
                 />
               ) : (
                 <section className="rounded-md border border-gray-200 bg-white p-8 text-center">
@@ -647,6 +721,8 @@ export default function App() {
         onAddToCart={handleAddToCart}
         onSelectProduct={setSelectedProduct}
         similarProducts={similarRecommendations}
+        isWishlisted={selectedProduct ? wishlistAsins.has(selectedProduct.asin) : false}
+        onToggleWishlist={handleToggleWishlist}
       />
 
       {/* Cart Drawer - Kept for User's Basket & Association Exploration */}
